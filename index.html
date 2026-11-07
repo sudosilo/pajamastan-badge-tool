@@ -117,6 +117,9 @@
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
   .badge.portrait { width: 2.125in; height: 3.375in; }
+  .badge .cwm { position: absolute; height: auto; pointer-events: none; }
+  .badge .ctx { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
+  .note { font-size: 10px; color: var(--muted); margin-top: 3px; }
   .badge .el { position: absolute; }
   .badge .el.band { display: flex; align-items: center; padding: 0 0.12in; overflow: hidden; background: var(--band-fill, #1f4e9c); }
   .badge .el.band span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
@@ -390,11 +393,40 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
       </div>
       <button class="alt" id="wmClear">Remove seal</button>
     </div>
+    <div class="grp">
+      <div class="gt">Card seal, behind the text</div>
+      <input type="file" id="cwIn" accept="image/*">
+      <button class="alt" id="cwCopy">Use the photo seal image</button>
+      <div class="check"><input type="checkbox" id="cwOn"><span>Show card seal</span></div>
+      <div class="row">
+        <div>
+          <div class="lab"><label for="cwOpacity">Strength</label><output data-for="cwOpacity"></output></div>
+          <input type="range" id="cwOpacity" min="3" max="100" value="20">
+        </div>
+        <div>
+          <div class="lab"><label for="cwSize">Size</label><output data-for="cwSize"></output></div>
+          <input type="range" id="cwSize" min="10" max="200" value="70">
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="lab"><label for="cwX">Across</label><output data-for="cwX"></output></div>
+          <input type="range" id="cwX" min="0" max="100" value="50">
+        </div>
+        <div>
+          <div class="lab"><label for="cwY">Down</label><output data-for="cwY"></output></div>
+          <input type="range" id="cwY" min="0" max="100" value="50">
+        </div>
+      </div>
+      <div class="lab"><label for="cwRot">Rotate</label><output data-for="cwRot"></output></div>
+      <input type="range" id="cwRot" min="-180" max="180" value="0">
+      <button class="alt" id="cwClear">Remove card seal</button>
+    </div>
   </div>
 
   <div class="sec" id="sText">
     <div class="grp">
-      <div class="gt">Overlay text</div>
+      <div class="gt">Photo overlay text</div>
       <input type="text" id="ovText" value="" placeholder="xxxxxxxx" autocomplete="off">
       <div class="row">
         <div>
@@ -410,8 +442,39 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
       <input type="range" id="ovOpacity" min="5" max="100" value="35">
     </div>
     <div class="grp">
-      <div class="gt">Overlay fill</div>
+      <div class="gt">Photo overlay fill</div>
       <div id="geOv"></div>
+    </div>
+    <div class="grp">
+      <div class="gt">Card pattern text, behind the text</div>
+      <div class="check"><input type="checkbox" id="ctOn"><span>Show pattern text</span></div>
+      <label for="ctText">Pattern text</label>
+      <input type="text" id="ctText" value="" autocomplete="off">
+      <div class="note">Leave empty to use the band title.</div>
+      <div class="row">
+        <div>
+          <div class="lab"><label for="ctAngle">Slope</label><output data-for="ctAngle"></output></div>
+          <input type="range" id="ctAngle" min="-90" max="90" value="-24">
+        </div>
+        <div>
+          <div class="lab"><label for="ctSize">Size</label><output data-for="ctSize"></output></div>
+          <input type="range" id="ctSize" min="4" max="24" step="0.5" value="8">
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="lab"><label for="ctOpacity">Strength</label><output data-for="ctOpacity"></output></div>
+          <input type="range" id="ctOpacity" min="3" max="100" value="14">
+        </div>
+        <div>
+          <div class="lab"><label for="ctGap">Row spacing</label><output data-for="ctGap"></output></div>
+          <input type="range" id="ctGap" min="1.1" max="4" step="0.1" value="1.9">
+        </div>
+      </div>
+    </div>
+    <div class="grp">
+      <div class="gt">Card pattern fill</div>
+      <div id="geCt"></div>
     </div>
   </div>
 
@@ -559,7 +622,40 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
     ]
   };
 
-  var state = { photo: '', shown: '', wm: '', orientation: 'landscape', tid: '', sel: 'name', font: 'Inter', style: 'classic', layout: clone(PRE.landscape[0].layout) };
+  /* mixed styles built from the base layouts */
+  function G(a, c1, c2) { return { mode: 'gradient', angle: a, stops: [{ c: c1, p: 0 }, { c: c2, p: 100 }] }; }
+  function CT(angle, size, opacity, gap, fill) { return { on: true, angle: angle, size: size, opacity: opacity, gap: gap, fill: typeof fill === 'string' ? solidOf(fill) : fill }; }
+  function CW(opacity, size, x, y) { return { on: true, opacity: opacity, size: size, x: x, y: y, rot: 0 }; }
+  function variant(o, baseId, id, name, extra, mod) {
+    var base = null;
+    PRE[o].forEach(function (p) { if (p.id === baseId) base = p; });
+    var v = { id: id, name: name, font: base.font, band: base.band, layout: clone(base.layout) };
+    for (var k in extra) v[k] = extra[k];
+    if (mod) mod(v.layout);
+    return v;
+  }
+  var landMix = [
+    variant('landscape', 'classic', 'fade', 'Classic fade', { bg: G(160, '#ffffff', '#dbe6f7'), band: G(90, '#1f4e9c', '#4f86d9') }),
+    variant('landscape', 'square', 'pattern', 'Text pattern', { ct: CT(-20, 8, 14, 1.9, G(90, '#0f5132', '#b8862b')) }),
+    variant('landscape', 'right', 'sealbg', 'Seal behind', { cw: CW(20, 62, 33, 60) }),
+    variant('landscape', 'classic', 'goldround', 'Gold round', { font: 'Playfair Display', band: G(90, '#8a6414', '#e0b65a'), bg: G(180, '#ffffff', '#fbf3e2'), ct: CT(-30, 7, 9, 2.2, '#b8862b') }, function (L) {
+      L.photo = P(0.2, 0.6, 1.2, 1.2, { radius: 50, frame: 2, frameColor: '#b8862b' });
+      ['name', 'role', 'meta'].forEach(function (k) { L[k].x = 1.55; L[k].w = 1.67; });
+      L.stripe.show = false;
+    }),
+    variant('landscape', 'bottom', 'official', 'Seal and pattern', { band: G(90, '#222222', '#5a5a5a'), cw: CW(16, 55, 62, 42), ct: CT(-15, 6.5, 8, 2.4, G(0, '#222222', '#7a1f1f')) })
+  ];
+  var portMix = [
+    variant('portrait', 'classic', 'fade', 'Classic fade', { bg: G(180, '#ffffff', '#dbe6f7'), band: G(90, '#1f4e9c', '#4f86d9') }),
+    variant('portrait', 'square', 'pattern', 'Text pattern', { ct: CT(-30, 8, 14, 1.9, G(90, '#0f5132', '#b8862b')) }),
+    variant('portrait', 'classic', 'sealbg', 'Seal behind', { cw: CW(20, 80, 50, 80) }),
+    variant('portrait', 'round', 'goldround', 'Gold round', { font: 'Playfair Display', band: G(90, '#8a6414', '#e0b65a'), bg: G(180, '#ffffff', '#fbf3e2'), ct: CT(-30, 7, 9, 2.2, '#b8862b') }),
+    variant('portrait', 'bottom', 'official', 'Seal and pattern', { band: G(90, '#222222', '#5a5a5a'), cw: CW(16, 75, 50, 38), ct: CT(-15, 6.5, 8, 2.4, G(0, '#222222', '#7a1f1f')) })
+  ];
+  PRE.landscape = PRE.landscape.concat(landMix);
+  PRE.portrait = PRE.portrait.concat(portMix);
+
+  var state = { photo: '', shown: '', wm: '', cwImg: '', orientation: 'landscape', tid: '', sel: 'name', font: 'Inter', style: 'classic', layout: clone(PRE.landscape[0].layout) };
 
   function esc(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -703,6 +799,7 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
   var gBand = makeGrad($('geBand'), { mode: 'solid', angle: 90, stops: [{ c: '#1f4e9c', p: 0 }, { c: '#7fb0ff', p: 100 }] }, function () { render(); });
   var gBg = makeGrad($('geBg'), { mode: 'solid', angle: 90, stops: [{ c: '#ffffff', p: 0 }, { c: '#dbe6f7', p: 100 }] }, function () { render(); });
   var gOv = makeGrad($('geOv'), { mode: 'solid', angle: 90, stops: [{ c: '#ffffff', p: 0 }, { c: '#ffd24d', p: 100 }] }, function () { render(); });
+  var gCt = makeGrad($('geCt'), G(90, '#1f4e9c', '#b8862b'), function () { render(); });
 
   function vals() {
     return {
@@ -714,7 +811,9 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
       zoom: $('zoom').value, panx: $('panx').value, pany: $('pany').value,
       photo: state.shown || state.photo, bgOn: $('bgOn').checked,
       wmImg: state.wm, wmMode: $('wmMode').value, wmOpacity: $('wmOpacity').value, wmSize: $('wmSize').value,
-      ovText: $('ovText').value, ovFill: gOv.get(), ovAngle: $('ovAngle').value, ovOpacity: $('ovOpacity').value, ovSize: $('ovSize').value
+      ovText: $('ovText').value, ovFill: gOv.get(), ovAngle: $('ovAngle').value, ovOpacity: $('ovOpacity').value, ovSize: $('ovSize').value,
+      cwImg: state.cwImg, cwOn: $('cwOn').checked, cwOpacity: $('cwOpacity').value, cwSize: $('cwSize').value, cwX: $('cwX').value, cwY: $('cwY').value, cwRot: $('cwRot').value,
+      ctOn: $('ctOn').checked, ctText: $('ctText').value, ctAngle: $('ctAngle').value, ctSize: $('ctSize').value, ctOpacity: $('ctOpacity').value, ctGap: $('ctGap').value, ctFill: gCt.get()
     };
   }
 
@@ -722,7 +821,9 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
     return { orientation: v.orientation, layout: clone(v.layout), font: v.font, style: state.style,
       org: v.org, role: v.role, issued: v.issued, expires: v.expires, band: v.band, bgFill: v.bgFill, useBack: v.useBack, backText: v.backText,
       wmImg: v.wmImg, wmMode: v.wmMode, wmOpacity: v.wmOpacity, wmSize: v.wmSize,
-      ovText: v.ovText, ovFill: v.ovFill, ovAngle: v.ovAngle, ovOpacity: v.ovOpacity, ovSize: v.ovSize };
+      ovText: v.ovText, ovFill: v.ovFill, ovAngle: v.ovAngle, ovOpacity: v.ovOpacity, ovSize: v.ovSize,
+      cwImg: v.cwImg, cwOn: v.cwOn, cwOpacity: v.cwOpacity, cwSize: v.cwSize, cwX: v.cwX, cwY: v.cwY, cwRot: v.cwRot,
+      ctOn: v.ctOn, ctText: v.ctText, ctAngle: v.ctAngle, ctSize: v.ctSize, ctOpacity: v.ctOpacity, ctGap: v.ctGap, ctFill: v.ctFill };
   }
 
   function cls(v, extra) { return 'badge' + (v.orientation === 'portrait' ? ' portrait' : '') + (extra ? ' ' + extra : ''); }
@@ -759,8 +860,55 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
     return h;
   }
 
+  var uid = 0;
+  function patternSVG(v) {
+    var sz = SIZE[v.orientation], W = sz.w * 100, H = sz.h * 100, cx = W / 2, cy = H / 2;
+    var id = 'cp' + (++uid);
+    var txt = (v.ctText.trim() || v.org || 'x').toUpperCase();
+    var fs = (parseFloat(v.ctSize) || 8) / 72 * 100;
+    var lh = fs * (parseFloat(v.ctGap) || 1.9);
+    var diag = Math.sqrt(W * W + H * H);
+    var seg = fs * 0.62 * (txt.length + 3);
+    var reps = Math.ceil(diag * 1.3 / seg) + 2;
+    var unit = esc(txt) + '\u00a0\u00a0\u00a0';
+    var line = '';
+    for (var r = 0; r < reps; r++) line += unit;
+    var rows = Math.ceil(diag / lh) + 2, texts = '';
+    for (var i = 0; i < rows; i++) {
+      var y = cy - (rows / 2) * lh + i * lh + fs / 3;
+      var x = cx + (i % 2 ? seg / 2 : 0);
+      texts += '<text x="' + r3(x) + '" y="' + r3(y) + '" text-anchor="middle">' + line + '</text>';
+    }
+    var f = v.ctFill, paint;
+    var defs = '';
+    if (f.mode === 'gradient' && f.stops.length > 1) {
+      var a = (parseFloat(f.angle) || 0) * Math.PI / 180, dx = Math.sin(a), dy = -Math.cos(a);
+      var half = (Math.abs(W * dx) + Math.abs(H * dy)) / 2;
+      var st = sortedStops(f).map(function (s) { return '<stop offset="' + s.p + '%" stop-color="' + s.c + '"/>'; }).join('');
+      defs += '<linearGradient id="g' + id + '" gradientUnits="userSpaceOnUse" x1="' + r3(cx - dx * half) + '" y1="' + r3(cy - dy * half) +
+        '" x2="' + r3(cx + dx * half) + '" y2="' + r3(cy + dy * half) + '">' + st + '</linearGradient>';
+      paint = 'url(#g' + id + ')';
+    } else {
+      paint = f.stops[0].c;
+    }
+    defs += '<mask id="m' + id + '" maskUnits="userSpaceOnUse" x="0" y="0" width="' + W + '" height="' + H + '">' +
+      '<g transform="rotate(' + (parseFloat(v.ctAngle) || 0) + ' ' + cx + ' ' + cy + ')" fill="#ffffff" font-size="' + r3(fs) +
+      '" font-weight="700" style="font-family:' + fam(v.font) + ';letter-spacing:0.08em">' + texts + '</g></mask>';
+    return '<svg class="ctx" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"><defs>' + defs + '</defs>' +
+      '<rect width="' + W + '" height="' + H + '" fill="' + paint + '" mask="url(#m' + id + ')" opacity="' + ((parseFloat(v.ctOpacity) || 14) / 100) + '"/></svg>';
+  }
+  function cardLayers(v) {
+    var out = '';
+    if (v.cwOn && v.cwImg) {
+      out += '<img class="cwm" src="' + v.cwImg + '" alt="" style="left:' + v.cwX + '%;top:' + v.cwY + '%;width:' + v.cwSize +
+        '%;opacity:' + ((parseFloat(v.cwOpacity) || 20) / 100) + ';transform:translate(-50%,-50%) rotate(' + (parseFloat(v.cwRot) || 0) + 'deg);">';
+    }
+    if (v.ctOn) out += patternSVG(v);
+    return out;
+  }
+
   function frontHTML(v, edit) {
-    var L = v.layout, out = '';
+    var L = v.layout, out = cardLayers(v);
     ORDER.forEach(function (k) {
       var e = L[k];
       if (!e || !e.show) return;
@@ -900,8 +1048,18 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
     state.style = p.id;
     state.layout = clone(p.layout);
     setFont(p.font);
-    gBand.set(solidOf(p.band));
-    gBg.set(solidOf('#ffffff'));
+    gBand.set(typeof p.band === 'string' ? solidOf(p.band) : p.band);
+    gBg.set(!p.bg ? solidOf('#ffffff') : (typeof p.bg === 'string' ? solidOf(p.bg) : p.bg));
+    if (p.ct) {
+      $('ctOn').checked = true; $('ctAngle').value = p.ct.angle; $('ctSize').value = p.ct.size;
+      $('ctOpacity').value = p.ct.opacity; $('ctGap').value = p.ct.gap; gCt.set(p.ct.fill);
+    } else {
+      $('ctOn').checked = false;
+    }
+    if (p.cw) {
+      $('cwOn').checked = true; $('cwOpacity').value = p.cw.opacity; $('cwSize').value = p.cw.size;
+      $('cwX').value = p.cw.x; $('cwY').value = p.cw.y; $('cwRot').value = p.cw.rot;
+    }
     drawStyles();
     render();
     syncLayout();
@@ -1165,6 +1323,15 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
       $('ovAngle').value = (t.ovAngle !== undefined && t.ovAngle !== '') ? t.ovAngle : -24;
       $('ovOpacity').value = t.ovOpacity || 35;
       $('ovSize').value = t.ovSize || 16;
+      state.cwImg = t.cwImg || '';
+      $('cwOn').checked = !!t.cwOn;
+      $('cwOpacity').value = t.cwOpacity || 20; $('cwSize').value = t.cwSize || 70;
+      $('cwX').value = t.cwX !== undefined ? t.cwX : 50; $('cwY').value = t.cwY !== undefined ? t.cwY : 50;
+      $('cwRot').value = t.cwRot || 0;
+      $('ctOn').checked = !!t.ctOn; $('ctText').value = t.ctText || '';
+      $('ctAngle').value = t.ctAngle !== undefined ? t.ctAngle : -24; $('ctSize').value = t.ctSize || 8;
+      $('ctOpacity').value = t.ctOpacity || 14; $('ctGap').value = t.ctGap || 1.9;
+      gCt.set(t.ctFill || G(90, '#1f4e9c', '#b8862b'));
     } else {
       $('tname').value = '';
     }
@@ -1252,6 +1419,16 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
       render();
     });
   });
+  $('cwIn').addEventListener('change', function (e) {
+    var f = e.target.files && e.target.files[0];
+    if (!f) return;
+    resizeToDataURL(f, 'image/png', 700, function (url) { state.cwImg = url; $('cwOn').checked = true; render(); });
+  });
+  $('cwCopy').addEventListener('click', function () {
+    if (!state.wm) { alert('Add a photo seal image first, or pick an image above.'); return; }
+    state.cwImg = state.wm; $('cwOn').checked = true; render();
+  });
+  $('cwClear').addEventListener('click', function () { state.cwImg = ''; $('cwIn').value = ''; render(); });
   $('wmClear').addEventListener('click', function () { state.wm = ''; $('wmIn').value = ''; render(); });
   $('clearPhoto').addEventListener('click', function () { state.photo = ''; state.shown = ''; $('photoIn').value = ''; render(); });
 
@@ -1315,7 +1492,8 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
   });
 
   ['name', 'role', 'idnum', 'org', 'issued', 'expires', 'useBack', 'backText', 'zoom', 'panx', 'pany',
-    'wmMode', 'wmOpacity', 'wmSize', 'ovText', 'ovAngle', 'ovOpacity', 'ovSize']
+    'wmMode', 'wmOpacity', 'wmSize', 'ovText', 'ovAngle', 'ovOpacity', 'ovSize',
+    'cwOn', 'cwOpacity', 'cwSize', 'cwX', 'cwY', 'cwRot', 'ctOn', 'ctText', 'ctAngle', 'ctSize', 'ctOpacity', 'ctGap']
     .forEach(function (id) {
       $(id).addEventListener('input', render);
       $(id).addEventListener('change', render);

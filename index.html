@@ -294,6 +294,10 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
       <input type="file" id="mockIn" accept="image/*">
       <div class="note">Shoot straight down with the mockup filling the frame. Color blocks become the band, stripe and photo. Pen writing becomes text spots.</div>
       <div class="stat" id="mockStat"></div>
+      <label for="aiIn">Read a pen drawing with AI, needs login</label>
+      <input type="file" id="aiIn" accept="image/*">
+      <div class="note">Write labels like photo, name, title, ID on the drawing. The AI finds the card edges, so the table can show around it.</div>
+      <div class="stat" id="aiStat"></div>
     </div>
     <div class="grp">
       <div class="gt">Part, or tap it on the badge</div>
@@ -510,6 +514,22 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
   </div>
 
   <div class="sec" id="sSaved">
+    <div class="grp" id="acct">
+      <div class="gt">Account and cloud saving</div>
+      <div id="acctOut">
+        <label for="acctEmail">Email</label>
+        <input type="text" id="acctEmail" inputmode="email" autocomplete="email">
+        <button id="acctSend">Email me a login link</button>
+      </div>
+      <div id="acctIn" style="display:none">
+        <div class="stat" id="acctWho"></div>
+        <div class="btnrow">
+          <button class="alt" id="acctSync">Sync now</button>
+          <button class="alt" id="acctOutBtn">Log out</button>
+        </div>
+      </div>
+      <div class="stat" id="acctStat"></div>
+    </div>
     <div class="grp">
       <div class="gt">Template</div>
       <label for="tname">Template name</label>
@@ -528,6 +548,7 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
 </div>
 
 <div id="printarea"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <script>
 (function () {
@@ -1394,6 +1415,7 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
     if (!saveDB(db)) { alert('Storage is full.'); return; }
     state.tid = t.id;
     drawChips(); drawRoster();
+    cloudPushTemplate(t);
   });
   $('tUpdate').addEventListener('click', function () {
     var t = findT(state.tid);
@@ -1404,6 +1426,7 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
     if (n) t.name = n;
     if (!saveDB(db)) { alert('Storage is full.'); return; }
     drawChips();
+    cloudPushTemplate(t);
   });
   $('tDelete').addEventListener('click', function () {
     var t = findT(state.tid);
@@ -1413,6 +1436,7 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
     db.people = db.people.filter(function (p) { return p.tid !== t.id; });
     db.active = '';
     saveDB(db);
+    cloudDelete('badge_templates', t.cid);
     applyTemplate(null);
   });
 
@@ -1581,8 +1605,10 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
         }
       }
     } else if (did !== null) {
+      var gone = db.people.filter(function (p) { return p.pid === did; })[0];
       db.people = db.people.filter(function (p) { return p.pid !== did; });
       saveDB(db);
+      if (gone) cloudDelete('badge_people', gone.cid);
       drawRoster();
     }
   });
@@ -1594,10 +1620,11 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
     for (var i = 0; i < db.people.length; i++) {
       if (db.people[i].tid === state.tid && db.people[i].name === v.name && db.people[i].idnum === v.idnum) { found = i; break; }
     }
-    if (found >= 0) { rec.pid = db.people[found].pid; db.people[found] = rec; }
+    if (found >= 0) { rec.pid = db.people[found].pid; rec.cid = db.people[found].cid; db.people[found] = rec; }
     else { rec.pid = newId(); db.people.push(rec); }
     if (!saveDB(db)) { alert('Storage is full. Delete a saved person and try again.'); return; }
     drawRoster();
+    cloudPushPerson(rec);
   });
 
   /* pearl tilt preview */
@@ -1860,6 +1887,199 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
     });
     $('mockIn').value = '';
   });
+
+  /* account and cloud saving */
+  var sb = null, sbUser = null;
+  function acctStat(t) { $('acctStat').textContent = t || ''; }
+  function showAcct() {
+    $('acctOut').style.display = sbUser ? 'none' : '';
+    $('acctIn').style.display = sbUser ? '' : 'none';
+    $('acctWho').textContent = sbUser ? 'Logged in as ' + sbUser.email + '. Saves go to the cloud too.' : '';
+  }
+  function tplData(t) {
+    var d = {};
+    for (var k in t) if (k !== 'id' && k !== 'cid') d[k] = t[k];
+    return d;
+  }
+  function cloudPushTemplate(t) {
+    if (!sb || !sbUser || !t) return Promise.resolve();
+    var row = { name: t.name, data: tplData(t), updated_at: new Date().toISOString() };
+    var q = t.cid
+      ? sb.from('badge_templates').update(row).eq('id', t.cid).select('id')
+      : sb.from('badge_templates').insert(row).select('id');
+    return q.then(function (r) {
+      if (r.error) { acctStat('Cloud save failed: ' + r.error.message); return; }
+      if (r.data && r.data[0]) { t.cid = r.data[0].id; saveDB(db); }
+      acctStat('Saved to the cloud.');
+    });
+  }
+  function cloudPushPerson(p) {
+    if (!sb || !sbUser || !p) return Promise.resolve();
+    var t = findT(p.tid);
+    if (!t) { acctStat('People saved under New stay on this phone. Save a template first.'); return Promise.resolve(); }
+    var go = function () {
+      var d = {};
+      for (var k in p) if (k !== 'pid' && k !== 'cid' && k !== 'tid') d[k] = p[k];
+      var row = { template_id: t.cid, name: p.name || '', data: d, updated_at: new Date().toISOString() };
+      var q = p.cid
+        ? sb.from('badge_people').update(row).eq('id', p.cid).select('id')
+        : sb.from('badge_people').insert(row).select('id');
+      return q.then(function (r) {
+        if (r.error) { acctStat('Cloud save failed: ' + r.error.message); return; }
+        if (r.data && r.data[0]) { p.cid = r.data[0].id; saveDB(db); }
+        acctStat('Saved to the cloud.');
+      });
+    };
+    return t.cid ? go() : cloudPushTemplate(t).then(function () { if (t.cid) return go(); });
+  }
+  function cloudDelete(table, cid) {
+    if (!sb || !sbUser || !cid) return;
+    sb.from(table).delete().eq('id', cid).then(function (r) { if (r.error) acctStat('Cloud delete failed: ' + r.error.message); });
+  }
+  function cloudSync() {
+    if (!sb || !sbUser) return;
+    acctStat('Syncing.');
+    Promise.all([
+      sb.from('badge_templates').select('id,name,data,updated_at'),
+      sb.from('badge_people').select('id,template_id,name,data,updated_at')
+    ]).then(function (rs) {
+      if (rs[0].error || rs[1].error) { acctStat('Sync failed: ' + (rs[0].error || rs[1].error).message); return; }
+      var byCid = {};
+      db.templates.forEach(function (t) { if (t.cid) byCid[t.cid] = t; });
+      var pulledT = 0, pulledP = 0;
+      rs[0].data.forEach(function (row) {
+        var local = byCid[row.id];
+        if (!local) {
+          local = row.data || {};
+          local.id = newId(); local.cid = row.id; local.name = row.name;
+          db.templates.push(local); byCid[row.id] = local; pulledT++;
+        }
+      });
+      var pByCid = {};
+      db.people.forEach(function (p) { if (p.cid) pByCid[p.cid] = p; });
+      rs[1].data.forEach(function (row) {
+        if (pByCid[row.id]) return;
+        var t = byCid[row.template_id];
+        if (!t) return;
+        var p = row.data || {};
+        p.pid = newId(); p.cid = row.id; p.tid = t.id;
+        db.people.push(p); pulledP++;
+      });
+      if (!saveDB(db)) { acctStat('This phone is out of storage space for the cloud copies.'); return; }
+      var ups = db.templates.filter(function (t) { return !t.cid; });
+      var upP = db.people.filter(function (p) { return !p.cid && findT(p.tid); });
+      var chain = Promise.resolve();
+      ups.forEach(function (t) { chain = chain.then(function () { return cloudPushTemplate(t); }); });
+      upP.forEach(function (p) { chain = chain.then(function () { return cloudPushPerson(p); }); });
+      chain.then(function () {
+        drawChips(); drawRoster();
+        acctStat('Synced. Pulled ' + pulledT + ' templates and ' + pulledP + ' people. Sent ' + ups.length + ' templates and ' + upP.length + ' people.');
+      });
+    });
+  }
+  function startCloud() {
+    if (!window.supabase) { acctStat('Cloud saving could not load.'); return; }
+    fetch('/api/config').then(function (r) { return r.json(); }).then(function (c) {
+      if (!c.supabaseUrl || !c.supabaseAnonKey) { acctStat('Cloud saving is not set up on the server yet.'); return; }
+      sb = window.supabase.createClient(c.supabaseUrl, c.supabaseAnonKey, { auth: { persistSession: true, detectSessionInUrl: true } });
+      sb.auth.onAuthStateChange(function (ev, session) {
+        var was = sbUser;
+        sbUser = session ? session.user : null;
+        showAcct();
+        if (sbUser && !was) cloudSync();
+      });
+      sb.auth.getSession().then(function (r) {
+        sbUser = r.data && r.data.session ? r.data.session.user : null;
+        showAcct();
+      });
+    }).catch(function () { acctStat('Cloud saving is offline right now.'); });
+  }
+  $('acctSend').addEventListener('click', function () {
+    var em = $('acctEmail').value.trim();
+    if (!sb) { acctStat('Cloud saving is not ready.'); return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { acctStat('Type a full email address.'); return; }
+    $('acctSend').disabled = true;
+    sb.auth.signInWithOtp({ email: em, options: { emailRedirectTo: location.origin } }).then(function (r) {
+      $('acctSend').disabled = false;
+      acctStat(r.error ? 'Could not send: ' + r.error.message : 'Link sent. Open it on this phone in Firefox.');
+    });
+  });
+  $('acctSync').addEventListener('click', cloudSync);
+  $('acctOutBtn').addEventListener('click', function () {
+    if (!sb) return;
+    sb.auth.signOut().then(function () { sbUser = null; showAcct(); acctStat('Logged out. Everything stays saved on this phone.'); });
+  });
+
+  /* AI reading of pen drawings */
+  function applyAi(r) {
+    var o = r.orientation === 'portrait' ? 'portrait' : 'landscape', sz = SIZE[o];
+    var L = clone(PRE[o][0].layout), found = [];
+    var box = function (p) { return { x: r3(p.x * sz.w), y: r3(p.y * sz.h), w: r3(p.w * sz.w), h: r3(p.h * sz.h) }; };
+    var seen = {};
+    L.stripe.show = false;
+    r.parts.forEach(function (p) {
+      var b = box(p);
+      if (p.kind === 'band' && !seen.band) {
+        L.band.x = b.x; L.band.y = b.y; L.band.w = b.w; L.band.h = b.h;
+        L.band.color = lum(hexToRgb(p.color)) < 140 ? '#ffffff' : '#111111';
+        L.band.align = p.align;
+        L.band.size = Math.max(7, Math.min(16, r3(b.h * 72 * 0.45)));
+        gBand.set(solidOf(p.color));
+      } else if (p.kind === 'stripe' && !seen.stripe) {
+        L.stripe = S(b.x, b.y, b.w, b.h);
+      } else if (p.kind === 'photo' && !seen.photo) {
+        L.photo = P(b.x, b.y, b.w, p.shape === 'round' ? b.w : b.h, { radius: p.shape === 'round' ? 50 : 0 });
+      } else if ((p.kind === 'name' || p.kind === 'role' || p.kind === 'details') && !seen[p.kind]) {
+        var k = p.kind === 'details' ? 'meta' : p.kind, e = L[k];
+        e.x = b.x; e.y = b.y; e.w = Math.max(b.w, 1.0); e.h = b.h; e.align = p.align;
+        e.color = p.textColor;
+        e.size = Math.max(6, Math.min(30, r3(b.h * 72 / (k === 'meta' ? 3.9 : 1.2))));
+      } else if (p.kind === 'seal' && !seen.seal) {
+        $('cwOn').checked = true;
+        $('cwX').value = Math.round((p.x + p.w / 2) * 100); $('cwY').value = Math.round((p.y + p.h / 2) * 100);
+        $('cwSize').value = Math.max(10, Math.min(200, Math.round(p.w * 100)));
+      } else if (p.kind === 'pattern' && !seen.pattern) {
+        $('ctOn').checked = true;
+      } else return;
+      seen[p.kind] = 1;
+      found.push(p.kind);
+    });
+    gBg.set(solidOf(r.card.color));
+    state.orientation = o;
+    state.layout = L;
+    state.style = '';
+    drawStyles();
+    render();
+    syncLayout();
+    return found;
+  }
+  $('aiIn').addEventListener('change', function (e) {
+    var f = e.target.files && e.target.files[0];
+    $('aiIn').value = '';
+    if (!f) return;
+    if (!sb || !sbUser) { $('aiStat').textContent = 'Log in from the Saved tab first.'; return; }
+    $('aiStat').textContent = 'Sending the drawing to the AI.';
+    resizeToDataURL(f, 'image/jpeg', 1400, function (url) {
+      sb.auth.getSession().then(function (s) {
+        var tok = s.data && s.data.session ? s.data.session.access_token : '';
+        return fetch('/api/read-mockup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok },
+          body: JSON.stringify({ image: url })
+        });
+      }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); }).then(function (res) {
+        if (!res.ok) {
+          var why = { login_required: 'Log in again from the Saved tab.', ai_not_set_up: 'The AI key is not on the server yet.' }[res.j.error] || ('The AI read failed: ' + res.j.error);
+          $('aiStat').textContent = why;
+          return;
+        }
+        var found = applyAi(res.j);
+        $('aiStat').textContent = found.length ? 'Built from the drawing: ' + found.join(', ') + '.' : 'The AI found no badge parts in that photo.';
+      }).catch(function () { $('aiStat').textContent = 'Could not reach the server.'; });
+    });
+  });
+
+  startCloud();
 
   /* start on the last template used */
   setFont('Inter');

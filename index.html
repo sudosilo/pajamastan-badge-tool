@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Badge Tool</title>
+<style id="pageStyle">@page { size: 3.375in 2.125in; margin: 0; }</style>
 <style>
   :root {
     --bg: #f4f5f7;
@@ -34,7 +35,15 @@
   .preview-label { font-size: 13px; color: var(--muted); margin: 6px 0; }
   .stage { display: flex; justify-content: center; padding: 8px 0 4px; overflow-x: auto; }
 
-  /* badge, credit card size */
+  /* tabs */
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+  .tabs button { margin: 0; flex: 1; background: #fff; color: var(--accent); }
+  .tabs button.on { background: var(--accent); color: #fff; }
+  .chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; }
+  .chips button { margin: 0; width: auto; white-space: nowrap; padding: 9px 12px; font-size: 14px; background: #fff; color: var(--accent); flex: none; }
+  .chips button.on { background: var(--accent); color: #fff; }
+
+  /* badge, credit card size, landscape default */
   .badge {
     width: 3.375in; height: 2.125in; background: #ffffff; color: #111; position: relative; overflow: hidden;
     border: 1px solid #c9ced6; border-radius: 0.125in; flex: none;
@@ -52,15 +61,22 @@
   .badge.back .band { height: 0.3in; }
   .badge.back .btxt { position: absolute; left: 0.16in; right: 0.16in; top: 0.45in; bottom: 0.2in; font-size: 9pt; line-height: 1.35; white-space: pre-wrap; word-wrap: break-word; overflow: hidden; }
 
-  .roster-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 15px; }
-  .roster-item:first-child { border-top: none; }
-  .roster-item .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .roster-item .btns { display: flex; gap: 6px; }
+  /* portrait */
+  .badge.portrait { width: 2.125in; height: 3.375in; }
+  .badge.portrait .photo { left: 0.4in; top: 0.56in; width: 1.325in; height: 1.6in; }
+  .badge.portrait .info { left: 0.1in; right: 0.1in; top: 2.25in; text-align: center; }
+  .badge.portrait .nm { font-size: 13pt; }
+  .badge.portrait .meta { left: 0.1in; right: 0.1in; bottom: 0.15in; text-align: center; }
+  .badge.portrait.back .btxt { top: 0.45in; }
+
+  .item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 15px; }
+  .item:first-child { border-top: none; }
+  .item .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .btns { display: flex; gap: 6px; }
   .empty { color: var(--muted); font-size: 14px; }
 
   #printarea { display: none; }
 
-  @page { size: 3.375in 2.125in; margin: 0; }
   @media print {
     html, body { background: #fff; }
     .wrap { display: none !important; }
@@ -74,6 +90,14 @@
 <div class="wrap">
   <h1>Badge Tool</h1>
 
+  <div class="tabs">
+    <button id="modeL" class="on">Landscape</button>
+    <button id="modeP">Portrait</button>
+  </div>
+
+  <div class="preview-label">Templates</div>
+  <div class="chips" id="chips"></div>
+
   <div class="panel">
     <div class="preview-label">Front</div>
     <div class="stage"><div class="badge" id="front"></div></div>
@@ -84,14 +108,11 @@
   </div>
 
   <div class="panel">
+    <div class="preview-label">Person</div>
     <label for="photoIn">Photo</label>
     <input type="file" id="photoIn" accept="image/*">
-    <div class="row">
-      <div>
-        <label for="zoom">Zoom</label>
-        <input type="range" id="zoom" min="100" max="300" value="100">
-      </div>
-    </div>
+    <label for="zoom">Zoom</label>
+    <input type="range" id="zoom" min="100" max="300" value="100">
     <div class="row">
       <div>
         <label for="panx">Move left or right</label>
@@ -102,24 +123,22 @@
         <input type="range" id="pany" min="-50" max="50" value="0">
       </div>
     </div>
-
     <label for="name">Name</label>
     <input type="text" id="name" value="xxxx xxxxxxxx" autocomplete="off">
+    <label for="idnum">ID number</label>
+    <input type="text" id="idnum" value="xxxxxx" autocomplete="off">
 
-    <div class="row">
-      <div>
-        <label for="role">Role</label>
-        <input type="text" id="role" value="xxxxxxxxxx" autocomplete="off">
-      </div>
-      <div>
-        <label for="idnum">ID number</label>
-        <input type="text" id="idnum" value="xxxxxx" autocomplete="off">
-      </div>
-    </div>
+    <button id="printBtn">Print badge</button>
+    <button class="alt" id="savePerson">Save person under this template</button>
+    <button class="alt" id="clearPhoto">Remove photo</button>
+  </div>
 
+  <div class="panel">
+    <div class="preview-label">Template design</div>
     <label for="org">Organization name on the top band</label>
     <input type="text" id="org" value="xxxxxxxxxxxxxxxx" autocomplete="off">
-
+    <label for="role">Job role</label>
+    <input type="text" id="role" value="xxxxxxxxxx" autocomplete="off">
     <div class="row">
       <div>
         <label for="issued">Issued</label>
@@ -130,10 +149,8 @@
         <input type="text" id="expires" value="xxxx-xx-xx" autocomplete="off">
       </div>
     </div>
-
     <label for="accent">Band color</label>
     <input type="color" id="accent" value="#1f4e9c">
-
     <div class="check">
       <input type="checkbox" id="useBack">
       <span>Include a back side</span>
@@ -144,13 +161,15 @@
 xxxxxxxxxxxxxxxxxxxx</textarea>
     </div>
 
-    <button id="printBtn">Print badge</button>
-    <button class="alt" id="saveBtn">Save to roster</button>
-    <button class="alt" id="clearPhoto">Remove photo</button>
+    <label for="tname">Template name</label>
+    <input type="text" id="tname" value="" autocomplete="off">
+    <button id="tNew">Save as new template</button>
+    <button class="alt" id="tUpdate" style="display:none">Update this template</button>
+    <button class="alt" id="tDelete" style="display:none">Delete this template</button>
   </div>
 
   <div class="panel">
-    <div class="preview-label">Saved on this phone</div>
+    <div class="preview-label" id="rosterTitle">People saved under this template</div>
     <div id="roster"></div>
   </div>
 </div>
@@ -159,16 +178,32 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
 
 <script>
 (function () {
-  var KEY = 'badge_tool_roster_v1';
+  var KEY = 'badge_tool_v2';
   var $ = function (id) { return document.getElementById(id); };
-  var state = { photo: '' };
+  var state = { photo: '', orientation: 'landscape', tid: '' };
 
   function esc(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  /* storage */
+  function loadDB() {
+    try {
+      var d = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (d && d.templates && d.people) return d;
+    } catch (e) {}
+    return { templates: [], people: [], active: '' };
+  }
+  function saveDB(d) {
+    try { localStorage.setItem(KEY, JSON.stringify(d)); return true; } catch (e) { return false; }
+  }
+  var db = loadDB();
+
+  function newId() { return 't' + Date.now().toString(36) + Math.floor(Math.random() * 1000).toString(36); }
+
   function vals() {
     return {
+      orientation: state.orientation,
       name: $('name').value,
       role: $('role').value,
       idnum: $('idnum').value,
@@ -183,6 +218,14 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
       pany: $('pany').value,
       photo: state.photo
     };
+  }
+
+  function designOf(v) {
+    return { orientation: v.orientation, org: v.org, role: v.role, issued: v.issued, expires: v.expires, accent: v.accent, useBack: v.useBack, backText: v.backText };
+  }
+
+  function cls(v, extra) {
+    return 'badge' + (v.orientation === 'portrait' ? ' portrait' : '') + (extra ? ' ' + extra : '');
   }
 
   function frontHTML(v) {
@@ -208,23 +251,116 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
   function render() {
     var v = vals();
     document.documentElement.style.setProperty('--badge-accent', v.accent);
+    $('front').className = cls(v);
     $('front').innerHTML = frontHTML(v);
+    $('back').className = cls(v, 'back');
+    $('back').innerHTML = backHTML(v);
     $('backWrap').style.display = v.useBack ? 'block' : 'none';
     $('backFields').style.display = v.useBack ? 'block' : 'none';
-    $('back').innerHTML = backHTML(v);
+    $('modeL').className = v.orientation === 'landscape' ? 'on' : '';
+    $('modeP').className = v.orientation === 'portrait' ? 'on' : '';
+    $('pageStyle').textContent = v.orientation === 'portrait'
+      ? '@page { size: 2.125in 3.375in; margin: 0; }'
+      : '@page { size: 3.375in 2.125in; margin: 0; }';
   }
 
+  /* template tabs */
+  function drawChips() {
+    var box = $('chips');
+    box.innerHTML = '';
+    var b = document.createElement('button');
+    b.textContent = 'New';
+    b.setAttribute('data-t', '');
+    if (!state.tid) b.className = 'on';
+    box.appendChild(b);
+    db.templates.forEach(function (t) {
+      var c = document.createElement('button');
+      c.textContent = t.name + (t.orientation === 'portrait' ? ' (P)' : ' (L)');
+      c.setAttribute('data-t', t.id);
+      if (state.tid === t.id) c.className = 'on';
+      box.appendChild(c);
+    });
+    $('tUpdate').style.display = state.tid ? 'block' : 'none';
+    $('tDelete').style.display = state.tid ? 'block' : 'none';
+    $('tNew').textContent = state.tid ? 'Save as another new template' : 'Save as new template';
+  }
+
+  function findT(id) {
+    for (var i = 0; i < db.templates.length; i++) if (db.templates[i].id === id) return db.templates[i];
+    return null;
+  }
+
+  function applyTemplate(t) {
+    state.tid = t ? t.id : '';
+    if (t) {
+      state.orientation = t.orientation || 'landscape';
+      $('org').value = t.org; $('role').value = t.role; $('issued').value = t.issued; $('expires').value = t.expires;
+      $('accent').value = t.accent; $('useBack').checked = !!t.useBack; $('backText').value = t.backText;
+      $('tname').value = t.name;
+    } else {
+      $('tname').value = '';
+    }
+    db.active = state.tid;
+    saveDB(db);
+    drawChips();
+    drawRoster();
+    render();
+  }
+
+  $('chips').addEventListener('click', function (e) {
+    var id = e.target.getAttribute('data-t');
+    if (id === null) return;
+    applyTemplate(id ? findT(id) : null);
+  });
+
+  $('modeL').addEventListener('click', function () { state.orientation = 'landscape'; render(); });
+  $('modeP').addEventListener('click', function () { state.orientation = 'portrait'; render(); });
+
+  $('tNew').addEventListener('click', function () {
+    var n = $('tname').value.trim();
+    if (!n) { alert('Type a template name first.'); return; }
+    var t = designOf(vals());
+    t.id = newId(); t.name = n;
+    db.templates.push(t);
+    db.active = t.id;
+    if (!saveDB(db)) { alert('Storage is full.'); return; }
+    state.tid = t.id;
+    drawChips(); drawRoster();
+  });
+
+  $('tUpdate').addEventListener('click', function () {
+    var t = findT(state.tid);
+    if (!t) return;
+    var d = designOf(vals());
+    for (var k in d) t[k] = d[k];
+    var n = $('tname').value.trim();
+    if (n) t.name = n;
+    saveDB(db);
+    drawChips();
+  });
+
+  $('tDelete').addEventListener('click', function () {
+    var t = findT(state.tid);
+    if (!t) return;
+    if (!confirm('Delete this template and the people saved under it?')) return;
+    db.templates = db.templates.filter(function (x) { return x.id !== t.id; });
+    db.people = db.people.filter(function (p) { return p.tid !== t.id; });
+    db.active = '';
+    saveDB(db);
+    applyTemplate(null);
+  });
+
+  /* photo */
   function resizeToDataURL(file, cb) {
     var reader = new FileReader();
     reader.onload = function (e) {
       var im = new Image();
       im.onload = function () {
         var max = 700;
-        var w = im.width, h = im.height;
-        var s = Math.min(1, max / Math.max(w, h));
+        var s = Math.min(1, max / Math.max(im.width, im.height));
         var c = document.createElement('canvas');
-        c.width = Math.round(w * s);
-        c.height = Math.round(h * s);
+        c.width = Math.round(im.width * s);
+        c.height = Math.round(im.height * s);
         c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
         cb(c.toDataURL('image/jpeg', 0.88));
       };
@@ -257,69 +393,69 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
 
   $('printBtn').addEventListener('click', function () {
     var v = vals();
-    var html = '<div class="badge">' + frontHTML(v) + '</div>';
-    if (v.useBack) html += '<div class="badge back">' + backHTML(v) + '</div>';
+    var html = '<div class="' + cls(v) + '">' + frontHTML(v) + '</div>';
+    if (v.useBack) html += '<div class="' + cls(v, 'back') + '">' + backHTML(v) + '</div>';
     $('printarea').innerHTML = html;
     window.print();
   });
 
-  /* roster */
-  function loadRoster() {
-    try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; }
-  }
-  function saveRoster(list) {
-    try { localStorage.setItem(KEY, JSON.stringify(list)); return true; } catch (e) { return false; }
-  }
-
+  /* people under the active template */
   function drawRoster() {
-    var list = loadRoster();
+    var t = findT(state.tid);
+    $('rosterTitle').textContent = t ? ('People saved under ' + t.name) : 'People saved under New';
     var box = $('roster');
+    var list = db.people.filter(function (p) { return p.tid === state.tid; });
     if (!list.length) { box.innerHTML = '<div class="empty">Nothing saved yet.</div>'; return; }
     box.innerHTML = '';
-    list.forEach(function (item, i) {
+    list.forEach(function (p) {
       var row = document.createElement('div');
-      row.className = 'roster-item';
-      row.innerHTML = '<div class="nm">' + esc(item.name || 'Unnamed') + '</div>' +
-        '<div class="btns"><button class="small alt" data-load="' + i + '">Load</button>' +
-        '<button class="small alt" data-del="' + i + '">Delete</button></div>';
+      row.className = 'item';
+      row.innerHTML = '<div class="nm">' + esc(p.name || 'Unnamed') + '</div>' +
+        '<div class="btns"><button class="small alt" data-load="' + p.pid + '">Load</button>' +
+        '<button class="small alt" data-del="' + p.pid + '">Delete</button></div>';
       box.appendChild(row);
     });
   }
 
   $('roster').addEventListener('click', function (e) {
     var t = e.target;
-    var list = loadRoster();
-    if (t.getAttribute('data-load') !== null) {
-      var it = list[parseInt(t.getAttribute('data-load'), 10)];
-      if (!it) return;
-      $('name').value = it.name; $('role').value = it.role; $('idnum').value = it.idnum;
-      $('org').value = it.org; $('issued').value = it.issued; $('expires').value = it.expires;
-      $('accent').value = it.accent; $('useBack').checked = !!it.useBack; $('backText').value = it.backText;
-      $('zoom').value = it.zoom; $('panx').value = it.panx; $('pany').value = it.pany;
-      state.photo = it.photo || '';
-      render();
-      window.scrollTo(0, 0);
-    } else if (t.getAttribute('data-del') !== null) {
-      list.splice(parseInt(t.getAttribute('data-del'), 10), 1);
-      saveRoster(list);
+    var lid = t.getAttribute('data-load');
+    var did = t.getAttribute('data-del');
+    if (lid !== null) {
+      for (var i = 0; i < db.people.length; i++) {
+        var p = db.people[i];
+        if (p.pid === lid) {
+          $('name').value = p.name; $('idnum').value = p.idnum;
+          $('zoom').value = p.zoom; $('panx').value = p.panx; $('pany').value = p.pany;
+          state.photo = p.photo || '';
+          render();
+          window.scrollTo(0, 0);
+          break;
+        }
+      }
+    } else if (did !== null) {
+      db.people = db.people.filter(function (p) { return p.pid !== did; });
+      saveDB(db);
       drawRoster();
     }
   });
 
-  $('saveBtn').addEventListener('click', function () {
+  $('savePerson').addEventListener('click', function () {
     var v = vals();
-    var list = loadRoster();
-    var idx = -1;
-    for (var i = 0; i < list.length; i++) {
-      if (list[i].name === v.name && list[i].idnum === v.idnum) { idx = i; break; }
+    var rec = { pid: '', tid: state.tid, name: v.name, idnum: v.idnum, zoom: v.zoom, panx: v.panx, pany: v.pany, photo: v.photo };
+    var found = -1;
+    for (var i = 0; i < db.people.length; i++) {
+      if (db.people[i].tid === state.tid && db.people[i].name === v.name && db.people[i].idnum === v.idnum) { found = i; break; }
     }
-    if (idx >= 0) list[idx] = v; else list.push(v);
-    if (!saveRoster(list)) { alert('Storage is full. Delete a saved badge and try again.'); return; }
+    if (found >= 0) { rec.pid = db.people[found].pid; db.people[found] = rec; }
+    else { rec.pid = newId(); db.people.push(rec); }
+    if (!saveDB(db)) { alert('Storage is full. Delete a saved person and try again.'); return; }
     drawRoster();
   });
 
-  render();
-  drawRoster();
+  /* start on the last template used */
+  var start = db.active ? findT(db.active) : null;
+  applyTemplate(start);
 })();
 </script>
 </body>

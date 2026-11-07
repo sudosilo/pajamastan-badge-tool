@@ -119,6 +119,10 @@
   .badge.portrait { width: 2.125in; height: 3.375in; }
   .badge .cwm { position: absolute; height: auto; pointer-events: none; }
   .badge .ctx { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
+  .fit .pearl, .fit .shine { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
+  .fit .pearl { mix-blend-mode: overlay; background: linear-gradient(115deg, #ff9ed2, #9effe9, #c4a8ff, #ffe89e, #9ed8ff, #ff9ed2); background-size: 320% 100%; }
+  .fit .shine { mix-blend-mode: screen; background: linear-gradient(110deg, rgba(255,255,255,0) 30%, rgba(255,255,255,0.85) 47%, rgba(255,255,255,0) 60%); background-size: 260% 100%; }
+  .stat { font-size: 10.5px; color: var(--ink2); margin-top: 6px; min-height: 14px; }
   .note { font-size: 10px; color: var(--muted); margin-top: 3px; }
   .badge .el { position: absolute; }
   .badge .el.band { display: flex; align-items: center; padding: 0 0.12in; overflow: hidden; background: var(--band-fill, #1f4e9c); }
@@ -166,7 +170,7 @@
     </div>
     <div class="strip"><span class="sl">Style</span><div class="chips" id="styleChips"></div></div>
     <div class="stage" id="stage">
-      <div class="fit" id="frontWrap"><div class="badge" id="front"></div></div>
+      <div class="fit" id="frontWrap"><div class="badge" id="front"></div><div class="pearl" id="pearl"></div><div class="shine" id="shine"></div></div>
       <div class="fit" id="backWrap" style="display:none"><div class="badge back" id="back"></div></div>
     </div>
     <div class="strip"><span class="sl">Saved</span><div class="chips" id="chips"></div></div>
@@ -245,6 +249,27 @@
       <div class="sample" id="cardSample">Aa Bb Cc 0123</div>
     </div>
     <div class="grp">
+      <div class="gt">Pearl preview, screen only</div>
+      <div class="check"><input type="checkbox" id="pearlOn"><span>Tilt shine</span></div>
+      <div class="note">Tip the phone left and right. This never prints.</div>
+      <div class="row">
+        <div>
+          <div class="lab"><label for="pearlAmt">Shine</label><output data-for="pearlAmt"></output></div>
+          <input type="range" id="pearlAmt" min="0" max="100" value="55">
+        </div>
+        <div>
+          <div class="lab"><label for="hueAmt">Color drift</label><output data-for="hueAmt"></output></div>
+          <input type="range" id="hueAmt" min="0" max="180" value="40">
+        </div>
+      </div>
+      <div class="lab"><label for="tiltHand">Tilt by hand</label><output data-for="tiltHand"></output></div>
+      <input type="range" id="tiltHand" min="-100" max="100" value="0">
+      <div class="btnrow">
+        <button class="alt" id="freezeBtn">Freeze</button>
+        <button class="alt" id="keepTone">Keep this color</button>
+      </div>
+    </div>
+    <div class="grp">
       <div class="gt">Band fill</div>
       <div id="geBand"></div>
     </div>
@@ -264,6 +289,12 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
   </div>
 
   <div class="sec" id="sLayout">
+    <div class="grp">
+      <div class="gt">Build from a paper mockup</div>
+      <input type="file" id="mockIn" accept="image/*">
+      <div class="note">Shoot straight down with the mockup filling the frame. Color blocks become the band, stripe and photo. Pen writing becomes text spots.</div>
+      <div class="stat" id="mockStat"></div>
+    </div>
     <div class="grp">
       <div class="gt">Part, or tap it on the badge</div>
       <div class="chips wrapchips" id="elChips">
@@ -968,6 +999,7 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
       ? '@page { size: 2.125in 3.375in; margin: 0; }'
       : '@page { size: 3.375in 2.125in; margin: 0; }';
     fitStage();
+    if (tilt.on) queueTilt();
   }
 
   /* stage fit and front/back */
@@ -983,6 +1015,8 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
     wrap.style.height = Math.floor(h * k) + 'px';
     b.style.transform = 'scale(' + k + ')';
     b.style.setProperty('--k', k);
+    var rad = Math.round(0.125 * DPI * k) + 'px';
+    for (var c = 1; c < wrap.children.length; c++) wrap.children[c].style.borderRadius = rad;
   }
   function fitStage() {
     var useBack = $('useBack').checked;
@@ -1564,6 +1598,267 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
     else { rec.pid = newId(); db.people.push(rec); }
     if (!saveDB(db)) { alert('Storage is full. Delete a saved person and try again.'); return; }
     drawRoster();
+  });
+
+  /* pearl tilt preview */
+  var tilt = { on: false, frozen: false, t: 0, u: 0, beta0: null, sensor: false, hue: 0, raf: 0 };
+  function hueMatrix(hex, deg) {
+    var c = hexToRgb(hex), a = Math.cos(deg * Math.PI / 180), b = Math.sin(deg * Math.PI / 180);
+    var r = (0.213 + 0.787 * a - 0.213 * b) * c[0] + (0.715 - 0.715 * a - 0.715 * b) * c[1] + (0.072 - 0.072 * a + 0.928 * b) * c[2];
+    var g = (0.213 - 0.213 * a + 0.143 * b) * c[0] + (0.715 + 0.285 * a + 0.140 * b) * c[1] + (0.072 - 0.072 * a - 0.283 * b) * c[2];
+    var bl = (0.213 - 0.213 * a - 0.787 * b) * c[0] + (0.715 - 0.715 * a + 0.715 * b) * c[1] + (0.072 + 0.928 * a + 0.072 * b) * c[2];
+    var cl = function (n) { return Math.max(0, Math.min(255, n)); };
+    return '#' + toHex(cl(r)) + toHex(cl(g)) + toHex(cl(bl));
+  }
+  function rotGrad(gr, deg) {
+    return { mode: gr.mode, angle: gr.angle, stops: gr.stops.map(function (s) { return { c: hueMatrix(s.c, deg), p: s.p }; }) };
+  }
+  function paintTilt() {
+    tilt.raf = 0;
+    var pearl = $('pearl'), shine = $('shine');
+    if (!tilt.on) {
+      pearl.style.display = 'none'; shine.style.display = 'none';
+      document.documentElement.style.setProperty('--band-fill', cssOf(gBand.get()));
+      document.documentElement.style.setProperty('--badge-bg', cssOf(gBg.get()));
+      return;
+    }
+    var amt = parseInt($('pearlAmt').value, 10) / 100;
+    var t = tilt.t, u = tilt.u;
+    pearl.style.display = 'block'; shine.style.display = 'block';
+    pearl.style.opacity = amt * 0.8;
+    shine.style.opacity = amt;
+    pearl.style.backgroundPosition = (50 + (t * 0.75 + u * 0.25) * 50) + '% 50%';
+    shine.style.backgroundPosition = (50 - t * 55) + '% 50%';
+    tilt.hue = Math.round(t * parseInt($('hueAmt').value, 10));
+    document.documentElement.style.setProperty('--band-fill', cssOf(rotGrad(gBand.get(), tilt.hue)));
+    document.documentElement.style.setProperty('--badge-bg', cssOf(rotGrad(gBg.get(), tilt.hue)));
+  }
+  function queueTilt() { if (!tilt.raf) tilt.raf = requestAnimationFrame(paintTilt); }
+  window.addEventListener('deviceorientation', function (e) {
+    if (e.gamma === null || e.gamma === undefined) return;
+    tilt.sensor = true;
+    if (!tilt.on || tilt.frozen) return;
+    if (tilt.beta0 === null) tilt.beta0 = e.beta || 0;
+    tilt.t = Math.max(-1, Math.min(1, e.gamma / 40));
+    tilt.u = Math.max(-1, Math.min(1, ((e.beta || 0) - tilt.beta0) / 40));
+    $('tiltHand').value = Math.round(tilt.t * 100);
+    outputs();
+    queueTilt();
+  });
+  $('pearlOn').addEventListener('change', function () {
+    tilt.on = $('pearlOn').checked;
+    tilt.beta0 = null;
+    if (tilt.on && window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      DeviceOrientationEvent.requestPermission().catch(function () {});
+    }
+    queueTilt();
+  });
+  $('tiltHand').addEventListener('input', function () {
+    if (tilt.frozen) return;
+    tilt.t = parseInt($('tiltHand').value, 10) / 100;
+    queueTilt();
+  });
+  ['pearlAmt', 'hueAmt'].forEach(function (id) { $(id).addEventListener('input', queueTilt); });
+  $('freezeBtn').addEventListener('click', function () {
+    tilt.frozen = !tilt.frozen;
+    $('freezeBtn').textContent = tilt.frozen ? 'Unfreeze' : 'Freeze';
+    $('freezeBtn').className = tilt.frozen ? '' : 'alt';
+  });
+  $('keepTone').addEventListener('click', function () {
+    var h = tilt.hue;
+    if (!h) return;
+    gBand.set(rotGrad(gBand.get(), h));
+    gBg.set(rotGrad(gBg.get(), h));
+    gCt.set(rotGrad(gCt.get(), h));
+    tilt.t = 0; tilt.beta0 = null; $('tiltHand').value = 0;
+    tilt.frozen = false; $('freezeBtn').textContent = 'Freeze'; $('freezeBtn').className = 'alt';
+    render();
+  });
+
+  /* paper mockup reader */
+  function readMockup(im) {
+    var S = 160, sc = S / Math.max(im.width, im.height);
+    var w = Math.max(8, Math.round(im.width * sc)), h = Math.max(8, Math.round(im.height * sc));
+    var c = document.createElement('canvas'); c.width = w; c.height = h;
+    var x = c.getContext('2d'); x.drawImage(im, 0, 0, w, h);
+    var d = x.getImageData(0, 0, w, h).data, n = w * h;
+    var px = new Array(n);
+    for (var i = 0; i < n; i++) px[i] = [d[i * 4], d[i * 4 + 1], d[i * 4 + 2]];
+    var dist = function (a, b) { var r = a[0] - b[0], g = a[1] - b[1], bl = a[2] - b[2]; return Math.sqrt(r * r + g * g + bl * bl); };
+    /* paper color is the most common color */
+    var edge = px;
+    var buckets = {};
+    edge.forEach(function (p) { var k = (p[0] >> 5) + ',' + (p[1] >> 5) + ',' + (p[2] >> 5); (buckets[k] = buckets[k] || []).push(p); });
+    var bestK = null;
+    for (var bk in buckets) if (!bestK || buckets[bk].length > buckets[bestK].length) bestK = bk;
+    var paper = [0, 0, 0];
+    buckets[bestK].forEach(function (p) { paper[0] += p[0]; paper[1] += p[1]; paper[2] += p[2]; });
+    paper = paper.map(function (v) { return v / buckets[bestK].length; });
+    /* foreground pixels grouped into colors */
+    var fg = [];
+    var steady = function (j) {
+      var jx = j % w, jy = (j - jx) / w;
+      if (jx < 1 || jy < 1 || jx > w - 2 || jy > h - 2) return false;
+      var nb = [j - 1, j + 1, j - w, j + w, j - w - 1, j - w + 1, j + w - 1, j + w + 1];
+      for (var z = 0; z < nb.length; z++) if (dist(px[nb[z]], px[j]) > 40) return false;
+      return true;
+    };
+    for (i = 0; i < n; i++) {
+      if (dist(px[i], paper) <= 70) continue;
+      var lm = 0.299 * px[i][0] + 0.587 * px[i][1] + 0.114 * px[i][2];
+      if (lm < 100 || steady(i)) fg.push(i);
+    }
+    if (fg.length < n * 0.01) return null;
+    var K = 6, cents = [];
+    for (i = 0; i < K; i++) cents.push(px[fg[Math.floor((i + 0.5) * fg.length / K)]].slice());
+    var lab = new Int16Array(n).fill(-1);
+    for (var it = 0; it < 8; it++) {
+      var sum = cents.map(function () { return [0, 0, 0, 0]; });
+      fg.forEach(function (j) {
+        var bi = 0, bd = 1e9;
+        for (var q = 0; q < cents.length; q++) { var dd = dist(px[j], cents[q]); if (dd < bd) { bd = dd; bi = q; } }
+        lab[j] = bi; var sm = sum[bi]; sm[0] += px[j][0]; sm[1] += px[j][1]; sm[2] += px[j][2]; sm[3]++;
+      });
+      cents = cents.map(function (cc, q) { var sm = sum[q]; return sm[3] ? [sm[0] / sm[3], sm[1] / sm[3], sm[2] / sm[3]] : cc; });
+    }
+    /* merge colors that are close */
+    var map = cents.map(function (cc, q) { return q; });
+    for (var a1 = 0; a1 < cents.length; a1++) for (var b1 = a1 + 1; b1 < cents.length; b1++) if (map[b1] === b1 && dist(cents[a1], cents[b1]) < 55) map[b1] = map[a1];
+    fg.forEach(function (j) { lab[j] = map[lab[j]]; });
+    /* drop thin edge colors left where two papers meet */
+    var cnt = {};
+    fg.forEach(function (j) { cnt[lab[j]] = (cnt[lab[j]] || 0) + 1; });
+    var total = fg.length;
+    fg = fg.filter(function (j) { var cc = cents[lab[j]]; return cnt[lab[j]] >= total * 0.04 || (cnt[lab[j]] >= total * 0.005 && lum(cc) < 110); });
+    /* blobs per color, grown a little so pen strokes join into words */
+    var comps = [];
+    var seen = new Uint8Array(n);
+    var used = {};
+    fg.forEach(function (j) { used[lab[j]] = 1; });
+    Object.keys(used).forEach(function (ck) {
+      var cid = parseInt(ck, 10);
+      var m = new Uint8Array(n);
+      fg.forEach(function (j) { if (lab[j] === cid) m[j] = 1; });
+      var grown = new Uint8Array(n), R = 2;
+      for (var yy = 0; yy < h; yy++) for (var xx = 0; xx < w; xx++) {
+        if (!m[yy * w + xx]) continue;
+        for (var oy = -R; oy <= R; oy++) for (var ox = -R; ox <= R; ox++) {
+          var nx = xx + ox, ny = yy + oy;
+          if (nx >= 0 && ny >= 0 && nx < w && ny < h) grown[ny * w + nx] = 1;
+        }
+      }
+      seen.fill(0);
+      for (var s0 = 0; s0 < n; s0++) {
+        if (!grown[s0] || seen[s0]) continue;
+        var stack = [s0], x0 = w, y0 = h, x1 = 0, y1 = 0, ink = 0, area = 0;
+        seen[s0] = 1;
+        while (stack.length) {
+          var cur2 = stack.pop(), cx2 = cur2 % w, cy2 = (cur2 - cx2) / w;
+          area++; if (m[cur2]) ink++;
+          if (cx2 < x0) x0 = cx2; if (cx2 > x1) x1 = cx2; if (cy2 < y0) y0 = cy2; if (cy2 > y1) y1 = cy2;
+          [cur2 - 1, cur2 + 1, cur2 - w, cur2 + w].forEach(function (nb) {
+            if (nb < 0 || nb >= n || seen[nb] || !grown[nb]) return;
+            if (Math.abs((nb % w) - cx2) > 1) return;
+            seen[nb] = 1; stack.push(nb);
+          });
+        }
+        var bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+        if (bw * bh < n * 0.003) continue;
+        comps.push({ x: x0, y: y0, w: bw, h: bh, fill: ink / (bw * bh), color: cents[cid] });
+      }
+    });
+    return { w: w, h: h, paper: paper, comps: comps };
+  }
+
+  function hexOf(rgb) { return '#' + toHex(rgb[0]) + toHex(rgb[1]) + toHex(rgb[2]); }
+  function lum(rgb) { return 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]; }
+
+  function applyMockup(r) {
+    var o = r.w >= r.h ? 'landscape' : 'portrait', sz = SIZE[o];
+    var fx = sz.w / r.w, fy = sz.h / r.h;
+    var L = clone(PRE[o][0].layout);
+    var toIn = function (cp) { return { x: r3(cp.x * fx), y: r3(cp.y * fy), w: r3(cp.w * fx), h: r3(cp.h * fy) }; };
+    var comps = r.comps.slice().sort(function (a, b) { return b.w * b.h - a.w * a.h; });
+    var found = [], left = [];
+    var bands = comps.filter(function (cp) { return cp.w > r.w * 0.7 && cp.h < r.h * 0.35 && cp.fill > 0.5; });
+    var band = null, stripe = null;
+    bands.forEach(function (cp) {
+      if (cp.h < r.h * 0.07) { if (!stripe) stripe = cp; }
+      else if (!band) band = cp;
+    });
+    if (band) {
+      var bb = toIn(band); L.band.x = bb.x; L.band.y = bb.y; L.band.w = bb.w; L.band.h = bb.h; L.band.align = 'center';
+      L.band.color = lum(band.color) < 140 ? '#ffffff' : '#111111';
+      L.band.size = Math.max(7, Math.min(16, r3(bb.h * 72 * 0.45)));
+      gBand.set(solidOf(hexOf(band.color)));
+      found.push('band');
+    }
+    if (stripe) { var sb2 = toIn(stripe); L.stripe = S(sb2.x, sb2.y, sb2.w, sb2.h); found.push('stripe'); }
+    else L.stripe.show = false;
+    comps.forEach(function (cp) { if (cp !== band && cp !== stripe) left.push(cp); });
+    var photo = null;
+    for (var i = 0; i < left.length; i++) {
+      var cp = left[i], asp = cp.h / cp.w;
+      if (asp > 0.7 && asp < 1.8 && cp.w * cp.h > r.w * r.h * 0.06) { photo = cp; break; }
+    }
+    if (photo) {
+      var pb = toIn(photo);
+      L.photo = P(pb.x, pb.y, pb.w, pb.h, { frame: photo.fill > 0.5 ? 0 : 1, frameColor: hexOf(photo.color) });
+      found.push('photo');
+      left = left.filter(function (cp) { return cp !== photo; });
+    }
+    /* text spots: join pieces that share a line */
+    left.sort(function (a, b) { return a.y - b.y; });
+    var lines = [];
+    left.forEach(function (cp) {
+      var last = lines[lines.length - 1];
+      if (last && cp.y < last.y + last.h * 0.6) {
+        var nx0 = Math.min(last.x, cp.x), ny0 = Math.min(last.y, cp.y);
+        var nx1 = Math.max(last.x + last.w, cp.x + cp.w), ny1 = Math.max(last.y + last.h, cp.y + cp.h);
+        last.x = nx0; last.y = ny0; last.w = nx1 - nx0; last.h = ny1 - ny0;
+      } else lines.push({ x: cp.x, y: cp.y, w: cp.w, h: cp.h, color: cp.color });
+    });
+    var keys = ['name', 'role', 'meta'];
+    if (lines.length > 3) {
+      var rest = lines.slice(2), mx0 = 1e9, my0 = 1e9, mx1 = 0, my1 = 0;
+      rest.forEach(function (ln) { mx0 = Math.min(mx0, ln.x); my0 = Math.min(my0, ln.y); mx1 = Math.max(mx1, ln.x + ln.w); my1 = Math.max(my1, ln.y + ln.h); });
+      lines = lines.slice(0, 2).concat([{ x: mx0, y: my0, w: mx1 - mx0, h: my1 - my0, color: rest[0].color }]);
+    }
+    lines.forEach(function (ln, idx) {
+      var k = keys[idx], tb = toIn(ln), e = L[k];
+      e.x = tb.x; e.y = tb.y; e.w = Math.max(tb.w, 1.0); e.h = tb.h;
+      var lines2 = k === 'meta' ? 3.9 : 1.2;
+      e.size = Math.max(6, Math.min(30, r3(tb.h * 72 / lines2)));
+      e.color = lum(ln.color) < 110 ? hexOf(ln.color) : '#111111';
+      var mid = (tb.x + tb.w / 2) / sz.w;
+      e.align = Math.abs(mid - 0.5) < 0.08 ? 'center' : 'left';
+      found.push(k === 'meta' ? 'details' : k);
+    });
+    gBg.set(solidOf(hexOf(r.paper)));
+    state.orientation = o;
+    state.layout = L;
+    state.style = '';
+    drawStyles();
+    render();
+    syncLayout();
+    return found;
+  }
+
+  $('mockIn').addEventListener('change', function (e) {
+    var f = e.target.files && e.target.files[0];
+    if (!f) return;
+    $('mockStat').textContent = 'Reading the mockup.';
+    resizeToDataURL(f, 'image/jpeg', 900, function (url) {
+      var im = new Image();
+      im.onload = function () {
+        var r = readMockup(im);
+        if (!r || !r.comps.length) { $('mockStat').textContent = 'Nothing stood out from the paper. Try more contrast or a closer shot.'; return; }
+        var found = applyMockup(r);
+        $('mockStat').textContent = found.length ? 'Built from the mockup: ' + found.join(', ') + '.' : 'Paper color applied. No parts stood out.';
+      };
+      im.src = url;
+    });
+    $('mockIn').value = '';
   });
 
   /* start on the last template used */

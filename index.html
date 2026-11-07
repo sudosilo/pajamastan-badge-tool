@@ -45,11 +45,11 @@
 
   /* badge, credit card size, landscape default */
   .badge {
-    width: 3.375in; height: 2.125in; background: #ffffff; color: #111; position: relative; overflow: hidden;
+    width: 3.375in; height: 2.125in; background: var(--badge-bg, #ffffff); color: #111; position: relative; overflow: hidden;
     border: 1px solid #c9ced6; border-radius: 0.125in; flex: none;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
-  .badge .band { position: absolute; left: 0; top: 0; right: 0; height: 0.42in; background: var(--badge-accent, #1f4e9c); display: flex; align-items: center; padding: 0 0.14in; }
+  .badge .band { position: absolute; left: 0; top: 0; right: 0; height: 0.42in; background: var(--band-fill, #1f4e9c); display: flex; align-items: center; padding: 0 0.14in; }
   .badge .band span { color: #fff; font-weight: 700; font-size: 11pt; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .badge .photo { position: absolute; left: 0.14in; top: 0.56in; width: 1.05in; height: 1.35in; border: 1px solid #9aa3b0; background: #e8ebf0; overflow: hidden; }
   .badge .photo img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; transform-origin: center center; }
@@ -63,7 +63,7 @@
   .badge .nm { font-size: 14pt; font-weight: 800; line-height: 1.1; word-wrap: break-word; }
   .badge .rl { font-size: 9.5pt; color: #333; margin-top: 0.06in; line-height: 1.15; }
   .badge .meta { position: absolute; left: 1.35in; right: 0.12in; bottom: 0.14in; font-size: 8pt; color: #333; line-height: 1.3; }
-  .badge .stripe { position: absolute; left: 0; right: 0; bottom: 0; height: 0.07in; background: var(--badge-accent, #1f4e9c); }
+  .badge .stripe { position: absolute; left: 0; right: 0; bottom: 0; height: 0.07in; background: var(--band-fill, #1f4e9c); }
   .badge.back .band { height: 0.3in; }
   .badge.back .btxt { position: absolute; left: 0.16in; right: 0.16in; top: 0.45in; bottom: 0.2in; font-size: 9pt; line-height: 1.35; white-space: pre-wrap; word-wrap: break-word; overflow: hidden; }
 
@@ -75,6 +75,16 @@
   .badge.portrait .meta { left: 0.1in; right: 0.1in; bottom: 0.15in; text-align: center; }
   .badge.portrait.back .btxt { top: 0.45in; }
 
+  .ge-modes { display: flex; gap: 6px; }
+  .ge-modes button { margin: 0; flex: 1; padding: 8px; font-size: 14px; background: #fff; color: var(--accent); }
+  .ge-modes button.on { background: var(--accent); color: #fff; }
+  .ge-barwrap { position: relative; margin: 12px 14px 0; }
+  .ge-bar { height: 28px; border: 1px solid var(--line); border-radius: 6px; touch-action: none; }
+  .ge-marks { position: relative; height: 36px; }
+  .ge-mk { position: absolute; top: 5px; width: 24px; height: 24px; margin-left: -12px; border: 2px solid #fff; outline: 1px solid #555; border-radius: 4px; touch-action: none; }
+  .ge-mk.sel { outline: 3px solid var(--accent); }
+  .ge-row { display: flex; gap: 10px; align-items: center; margin-top: 6px; }
+  .ge-row input[type="color"] { flex: 1; }
   .item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 15px; }
   .item:first-child { border-top: none; }
   .item .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -165,8 +175,10 @@
         <input type="text" id="expires" value="xxxx-xx-xx" autocomplete="off">
       </div>
     </div>
-    <label for="accent">Band color</label>
-    <input type="color" id="accent" value="#1f4e9c">
+    <label>Band color or gradient</label>
+    <div id="geBand"></div>
+    <label>Badge background color or gradient</label>
+    <div id="geBg"></div>
     <div class="check">
       <input type="checkbox" id="useBack">
       <span>Include a back side</span>
@@ -199,16 +211,12 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
 
     <label for="ovText">Text printed over the photo</label>
     <input type="text" id="ovText" value="" placeholder="xxxxxxxx" autocomplete="off">
-    <div class="row">
-      <div>
-        <label for="ovColor">Text color</label>
-        <input type="color" id="ovColor" value="#ffffff">
-      </div>
-      <div>
-        <label for="ovOpacity">Text strength</label>
-        <input type="range" id="ovOpacity" min="5" max="100" value="35">
-      </div>
-    </div>
+    <label>Text color or gradient</label>
+    <div id="geOv"></div>
+    <label for="ovOpacity">Text strength</label>
+    <input type="range" id="ovOpacity" min="5" max="100" value="35">
+    <label for="ovAngle">Text angle</label>
+    <input type="range" id="ovAngle" min="-180" max="180" value="-24">
     <label for="ovSize">Text size</label>
     <input type="range" id="ovSize" min="6" max="40" value="16">
 
@@ -252,6 +260,126 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
 
   function newId() { return 't' + Date.now().toString(36) + Math.floor(Math.random() * 1000).toString(36); }
 
+  /* gradient editor */
+  function sortedStops(g) { return g.stops.slice().sort(function (a, b) { return a.p - b.p; }); }
+  function stopList(g) { return sortedStops(g).map(function (s) { return s.c + ' ' + s.p + '%'; }).join(','); }
+  function cssOf(g) {
+    if (g.mode !== 'gradient' || g.stops.length < 2) return g.stops[0].c;
+    return 'linear-gradient(' + g.angle + 'deg,' + stopList(g) + ')';
+  }
+  function colorAt(g, p) {
+    var s = sortedStops(g);
+    if (p <= s[0].p) return s[0].c;
+    if (p >= s[s.length - 1].p) return s[s.length - 1].c;
+    for (var i = 0; i < s.length - 1; i++) {
+      if (p >= s[i].p && p <= s[i + 1].p) {
+        var span = (s[i + 1].p - s[i].p) || 1, f = (p - s[i].p) / span;
+        var a = hexToRgb(s[i].c), b = hexToRgb(s[i + 1].c);
+        return '#' + toHex(a[0] + (b[0] - a[0]) * f) + toHex(a[1] + (b[1] - a[1]) * f) + toHex(a[2] + (b[2] - a[2]) * f);
+      }
+    }
+    return s[0].c;
+  }
+  function copyStops(a) { return a.map(function (s) { return { c: s.c, p: s.p }; }); }
+
+  function makeGrad(root, init, onChange) {
+    var g = { mode: init.mode, angle: init.angle, stops: copyStops(init.stops), sel: 0 };
+    root.className = 'ge';
+    root.innerHTML = '<div class="ge-modes"><button type="button" data-m="solid">Solid</button><button type="button" data-m="gradient">Gradient</button></div>' +
+      '<div class="ge-go"><div class="ge-barwrap"><div class="ge-bar"></div><div class="ge-marks"></div></div></div>' +
+      '<div class="ge-row"><input type="color" class="ge-color"><button type="button" class="small alt ge-del ge-go">Remove stop</button></div>' +
+      '<div class="ge-go"><label>Gradient angle</label><input type="range" class="ge-angle" min="0" max="360"></div>';
+    var q = function (sel) { return root.querySelector(sel); };
+    var bar = q('.ge-bar'), marks = q('.ge-marks'), colorIn = q('.ge-color'), delBtn = q('.ge-del'), angleIn = q('.ge-angle');
+    var modeBtns = root.querySelectorAll('.ge-modes button');
+    var gos = root.querySelectorAll('.ge-go');
+
+    function refresh() {
+      var grad = g.mode === 'gradient';
+      var i;
+      for (i = 0; i < gos.length; i++) gos[i].style.display = grad ? '' : 'none';
+      for (i = 0; i < modeBtns.length; i++) modeBtns[i].className = modeBtns[i].getAttribute('data-m') === g.mode ? 'on' : '';
+      bar.style.background = 'linear-gradient(90deg,' + stopList(g) + ')';
+      var mk = marks.children;
+      for (i = 0; i < mk.length; i++) {
+        mk[i].style.left = g.stops[i].p + '%';
+        mk[i].style.background = g.stops[i].c;
+        mk[i].className = 'ge-mk' + (i === g.sel ? ' sel' : '');
+      }
+      var cur = grad ? g.stops[g.sel] : g.stops[0];
+      colorIn.value = cur.c;
+      angleIn.value = g.angle;
+      delBtn.disabled = g.stops.length <= 2;
+    }
+
+    function build() {
+      marks.innerHTML = '';
+      g.stops.forEach(function (s, i) {
+        var m = document.createElement('div');
+        m.className = 'ge-mk';
+        m.addEventListener('pointerdown', function (e) {
+          e.preventDefault(); e.stopPropagation();
+          g.sel = i; refresh();
+          var rect = bar.getBoundingClientRect();
+          var move = function (ev) {
+            g.stops[i].p = Math.round(Math.max(0, Math.min(100, (ev.clientX - rect.left) / rect.width * 100)));
+            refresh(); onChange();
+          };
+          var up = function () {
+            window.removeEventListener('pointermove', move);
+            window.removeEventListener('pointerup', up);
+            window.removeEventListener('pointercancel', up);
+          };
+          window.addEventListener('pointermove', move);
+          window.addEventListener('pointerup', up);
+          window.addEventListener('pointercancel', up);
+        });
+        marks.appendChild(m);
+      });
+      refresh();
+    }
+
+    bar.addEventListener('pointerdown', function (e) {
+      var rect = bar.getBoundingClientRect();
+      var p = Math.round(Math.max(0, Math.min(100, (e.clientX - rect.left) / rect.width * 100)));
+      g.stops.push({ c: colorAt(g, p), p: p });
+      g.sel = g.stops.length - 1;
+      build(); onChange();
+    });
+    for (var mi = 0; mi < modeBtns.length; mi++) {
+      modeBtns[mi].addEventListener('click', function (e) {
+        g.mode = e.target.getAttribute('data-m');
+        refresh(); onChange();
+      });
+    }
+    colorIn.addEventListener('input', function () {
+      var cur = g.mode === 'gradient' ? g.stops[g.sel] : g.stops[0];
+      cur.c = colorIn.value;
+      refresh(); onChange();
+    });
+    angleIn.addEventListener('input', function () {
+      g.angle = parseInt(angleIn.value, 10);
+      onChange();
+    });
+    delBtn.addEventListener('click', function () {
+      if (g.stops.length <= 2) return;
+      g.stops.splice(g.sel, 1);
+      g.sel = 0;
+      build(); onChange();
+    });
+
+    build();
+    return {
+      get: function () { return { mode: g.mode, angle: g.angle, stops: copyStops(g.stops) }; },
+      set: function (o) { g.mode = o.mode; g.angle = o.angle; g.stops = copyStops(o.stops); g.sel = 0; build(); }
+    };
+  }
+
+  function solidOf(c) { return { mode: 'solid', angle: 90, stops: [{ c: c, p: 0 }, { c: '#ffffff', p: 100 }] }; }
+  var gBand = makeGrad($('geBand'), { mode: 'solid', angle: 90, stops: [{ c: '#1f4e9c', p: 0 }, { c: '#7fb0ff', p: 100 }] }, function () { render(); });
+  var gBg = makeGrad($('geBg'), { mode: 'solid', angle: 90, stops: [{ c: '#ffffff', p: 0 }, { c: '#dbe6f7', p: 100 }] }, function () { render(); });
+  var gOv = makeGrad($('geOv'), { mode: 'solid', angle: 90, stops: [{ c: '#ffffff', p: 0 }, { c: '#ffd24d', p: 100 }] }, function () { render(); });
+
   function vals() {
     return {
       orientation: state.orientation,
@@ -261,7 +389,8 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
       org: $('org').value,
       issued: $('issued').value,
       expires: $('expires').value,
-      accent: $('accent').value,
+      band: gBand.get(),
+      bgFill: gBg.get(),
       useBack: $('useBack').checked,
       backText: $('backText').value,
       zoom: $('zoom').value,
@@ -273,16 +402,17 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
       wmOpacity: $('wmOpacity').value,
       wmSize: $('wmSize').value,
       ovText: $('ovText').value,
-      ovColor: $('ovColor').value,
+      ovFill: gOv.get(),
+      ovAngle: $('ovAngle').value,
       ovOpacity: $('ovOpacity').value,
       ovSize: $('ovSize').value
     };
   }
 
   function designOf(v) {
-    return { orientation: v.orientation, org: v.org, role: v.role, issued: v.issued, expires: v.expires, accent: v.accent, useBack: v.useBack, backText: v.backText,
+    return { orientation: v.orientation, org: v.org, role: v.role, issued: v.issued, expires: v.expires, band: v.band, bgFill: v.bgFill, useBack: v.useBack, backText: v.backText,
       wmImg: v.wmImg, wmMode: v.wmMode, wmOpacity: v.wmOpacity, wmSize: v.wmSize,
-      ovText: v.ovText, ovColor: v.ovColor, ovOpacity: v.ovOpacity, ovSize: v.ovSize };
+      ovText: v.ovText, ovFill: v.ovFill, ovAngle: v.ovAngle, ovOpacity: v.ovOpacity, ovSize: v.ovSize };
   }
 
   function cls(v, extra) {
@@ -304,8 +434,13 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
     if (hasWm && v.wmMode === 'over') img += wmTag('over');
     if (v.ovText) {
       var line = esc(v.ovText);
-      img += '<div class="ov" style="font-size:' + v.ovSize + 'pt;color:' + v.ovColor + ';opacity:' +
-        ((parseInt(v.ovOpacity, 10) || 35) / 100) + ';">' + line + '<br>' + line + '<br>' + line + '</div>';
+      var ovCss = cssOf(v.ovFill);
+      var fill = v.ovFill.mode === 'gradient'
+        ? 'background-image:' + ovCss + ';-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;'
+        : 'color:' + ovCss + ';';
+      img += '<div class="ov" style="font-size:' + v.ovSize + 'pt;' + fill + 'opacity:' +
+        ((parseInt(v.ovOpacity, 10) || 35) / 100) + ';transform:translate(-50%,-50%) rotate(' + (parseInt(v.ovAngle, 10) || 0) + 'deg);">' +
+        line + '<br>' + line + '<br>' + line + '</div>';
     }
     var pcls = 'photo' + (hasWm && v.wmMode === 'behind' ? ' clean' : '');
     var meta = '';
@@ -327,7 +462,8 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
 
   function render() {
     var v = vals();
-    document.documentElement.style.setProperty('--badge-accent', v.accent);
+    document.documentElement.style.setProperty('--band-fill', cssOf(v.band));
+    document.documentElement.style.setProperty('--badge-bg', cssOf(v.bgFill));
     $('front').className = cls(v);
     $('front').innerHTML = frontHTML(v);
     $('back').className = cls(v, 'back');
@@ -373,14 +509,17 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
     if (t) {
       state.orientation = t.orientation || 'landscape';
       $('org').value = t.org; $('role').value = t.role; $('issued').value = t.issued; $('expires').value = t.expires;
-      $('accent').value = t.accent; $('useBack').checked = !!t.useBack; $('backText').value = t.backText;
+      gBand.set(t.band || solidOf(t.accent || '#1f4e9c'));
+      gBg.set(t.bgFill || solidOf('#ffffff'));
+      $('useBack').checked = !!t.useBack; $('backText').value = t.backText;
       $('tname').value = t.name;
       state.wm = t.wmImg || '';
       $('wmMode').value = t.wmMode || 'off';
       $('wmOpacity').value = t.wmOpacity || 40;
       $('wmSize').value = t.wmSize || 100;
       $('ovText').value = t.ovText || '';
-      $('ovColor').value = t.ovColor || '#ffffff';
+      gOv.set(t.ovFill || solidOf(t.ovColor || '#ffffff'));
+      $('ovAngle').value = (t.ovAngle !== undefined && t.ovAngle !== '') ? t.ovAngle : -24;
       $('ovOpacity').value = t.ovOpacity || 35;
       $('ovSize').value = t.ovSize || 16;
     } else {
@@ -555,8 +694,8 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
     $(id).addEventListener('change', process);
   });
 
-  ['name', 'role', 'idnum', 'org', 'issued', 'expires', 'accent', 'useBack', 'backText', 'zoom', 'panx', 'pany',
-    'wmMode', 'wmOpacity', 'wmSize', 'ovText', 'ovColor', 'ovOpacity', 'ovSize']
+  ['name', 'role', 'idnum', 'org', 'issued', 'expires', 'useBack', 'backText', 'zoom', 'panx', 'pany',
+    'wmMode', 'wmOpacity', 'wmSize', 'ovText', 'ovAngle', 'ovOpacity', 'ovSize']
     .forEach(function (id) {
       $(id).addEventListener('input', render);
       $(id).addEventListener('change', render);

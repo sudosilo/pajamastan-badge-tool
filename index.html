@@ -7,42 +7,101 @@
 <style id="pageStyle">@page { size: 3.375in 2.125in; margin: 0; }</style>
 <style>
   :root {
-    --bg: #f4f5f7;
+    --bg: #f5f5f2;
     --panel: #ffffff;
-    --ink: #1a1d23;
-    --muted: #5b6472;
-    --line: #d5d9e0;
-    --accent: #1f4e9c;
+    --ink: #121212;
+    --ink2: #3a3a3a;
+    --muted: #8a8a84;
+    --line: #e3e3de;
+    --line2: #cfcfc8;
+    --accent: #121212;
+    --hi: #b8862b;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  .wrap { max-width: 520px; margin: 0 auto; padding: 14px; }
-  h1 { font-size: 20px; margin: 4px 0 12px; }
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
-  label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
-  input[type="text"], textarea, select { width: 100%; font-size: 16px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); }
-  textarea { min-height: 70px; resize: vertical; }
-  input[type="range"] { width: 100%; }
-  input[type="color"] { width: 100%; height: 42px; border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 2px; }
-  input[type="file"] { width: 100%; font-size: 15px; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font: 12px/1.35 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 560px; margin: 0 auto; }
+
+  /* top bar */
+  .top { position: sticky; top: 0; z-index: 20; background: var(--bg); border-bottom: 1px solid var(--line); }
+  .bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px 6px; }
+  .brand { font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; flex: 1; white-space: nowrap; }
+  .brand i { font-style: normal; color: var(--hi); }
+  .seg { display: inline-flex; border: 1px solid var(--line2); border-radius: 5px; overflow: hidden; background: #fff; }
+  .seg button { border: 0; border-left: 1px solid var(--line2); background: transparent; color: var(--ink2); font: 600 10px/1 "Inter", system-ui, -apple-system, Roboto, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 8px; margin: 0; width: auto; border-radius: 0; }
+  .seg button:first-child { border-left: 0; }
+  .seg button.on { background: var(--ink); color: #fff; }
+  .seg button:disabled { color: #c4c4be; }
+  .btn-print { width: auto; margin: 0; padding: 6px 12px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; }
+
+  .stage { display: flex; justify-content: center; align-items: center; padding: 8px 12px 10px; background:
+    repeating-linear-gradient(45deg, #efefeb 0 6px, #f5f5f2 6px 12px); }
+  .fit { position: relative; flex: none; }
+  .fit > .badge { position: absolute; left: 0; top: 0; transform-origin: 0 0; box-shadow: 0 1px 2px rgba(0,0,0,0.08), 0 6px 18px rgba(0,0,0,0.08); }
+  .stagebar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 12px 6px; }
+  .chips { display: flex; gap: 4px; overflow-x: auto; flex: 1; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chips button { margin: 0; width: auto; white-space: nowrap; padding: 4px 9px; font-size: 10.5px; font-weight: 600; background: #fff; color: var(--ink2); border: 1px solid var(--line2); border-radius: 999px; flex: none; }
+  .chips button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  /* section tabs */
+  .nav { display: flex; border-top: 1px solid var(--line); background: #fff; }
+  .nav button { flex: 1; margin: 0; border: 0; border-radius: 0; background: transparent; color: var(--muted); font: 700 10px/1 "Inter", system-ui, -apple-system, Roboto, sans-serif; letter-spacing: 0.1em; text-transform: uppercase; padding: 9px 0 8px; border-bottom: 2px solid transparent; }
+  .nav button.on { color: var(--ink); border-bottom-color: var(--hi); }
+
+  .sec { display: none; padding: 10px 12px 28px; }
+  .sec.on { display: block; }
+  .grp { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px 10px; margin-bottom: 8px; }
+  .gt { font-size: 9.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+
+  label { display: block; font-size: 10.5px; color: var(--ink2); margin: 7px 0 3px; font-weight: 500; }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; }
+  .lab label { margin-bottom: 0; }
+  output { font: 500 10px/1 ui-monospace, "SF Mono", Menlo, monospace; color: var(--muted); }
+  input[type="text"], textarea, select { width: 100%; font: 12px/1.3 "Inter", system-ui, -apple-system, Roboto, sans-serif; padding: 6px 8px; border: 1px solid var(--line2); border-radius: 4px; background: #fff; color: var(--ink); height: 30px; }
+  textarea { height: auto; min-height: 54px; resize: vertical; }
+  input[type="text"]:focus, textarea:focus, select:focus { outline: none; border-color: var(--ink); }
+  input[type="file"] { width: 100%; font-size: 11px; color: var(--ink2); }
+  input[type="file"]::file-selector-button { font: 600 10px/1 "Inter", system-ui, -apple-system, Roboto, sans-serif; letter-spacing: 0.06em; text-transform: uppercase; padding: 6px 9px; margin-right: 8px; border: 1px solid var(--line2); border-radius: 4px; background: #fff; color: var(--ink); }
+  input[type="color"] { width: 100%; height: 26px; border: 1px solid var(--line2); border-radius: 4px; background: #fff; padding: 1px; }
+
+  input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 18px; background: transparent; margin: 2px 0 0; }
+  input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: var(--line2); border-radius: 2px; }
+  input[type="range"]::-moz-range-track { height: 2px; background: var(--line2); border-radius: 2px; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -6px; border-radius: 50%; background: #fff; border: 2px solid var(--ink); }
+  input[type="range"]::-moz-range-thumb { width: 10px; height: 10px; border-radius: 50%; background: #fff; border: 2px solid var(--ink); }
+
   .row { display: flex; gap: 10px; }
   .row > div { flex: 1; min-width: 0; }
-  .check { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 15px; color: var(--ink); }
-  .check input { width: 20px; height: 20px; }
-  button { font-size: 16px; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: #fff; width: 100%; margin-top: 12px; }
-  button.alt { background: #fff; color: var(--accent); }
-  button.small { width: auto; margin: 0; padding: 8px 10px; font-size: 14px; }
-  .preview-label { font-size: 13px; color: var(--muted); margin: 6px 0; }
-  .stage { display: flex; justify-content: center; padding: 8px 0 4px; overflow-x: auto; }
+  .check { display: flex; align-items: center; gap: 7px; margin-top: 8px; font-size: 11px; color: var(--ink); }
+  .check input { width: 14px; height: 14px; margin: 0; accent-color: var(--ink); }
 
-  /* tabs */
-  .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
-  .tabs button { margin: 0; flex: 1; background: #fff; color: var(--accent); }
-  .tabs button.on { background: var(--accent); color: #fff; }
-  .chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; }
-  .chips button { margin: 0; width: auto; white-space: nowrap; padding: 9px 12px; font-size: 14px; background: #fff; color: var(--accent); flex: none; }
-  .chips button.on { background: var(--accent); color: #fff; }
+  button { font: 600 11px/1 "Inter", system-ui, -apple-system, Roboto, sans-serif; letter-spacing: 0.04em; padding: 8px 10px; border-radius: 4px; border: 1px solid var(--ink); background: var(--ink); color: #fff; width: 100%; margin-top: 8px; }
+  button.alt { background: #fff; color: var(--ink); border-color: var(--line2); }
+  button.small { width: auto; margin: 0; padding: 5px 8px; font-size: 10px; }
+  button:disabled { opacity: 0.4; }
+  .btnrow { display: flex; gap: 6px; }
+  .btnrow button { flex: 1; }
 
+  /* gradient editor */
+  .ge-modes { display: inline-flex; border: 1px solid var(--line2); border-radius: 4px; overflow: hidden; }
+  .ge-modes button { margin: 0; width: auto; border: 0; border-left: 1px solid var(--line2); border-radius: 0; padding: 4px 9px; font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; background: #fff; color: var(--ink2); }
+  .ge-modes button:first-child { border-left: 0; }
+  .ge-modes button.on { background: var(--ink); color: #fff; }
+  .ge-barwrap { position: relative; margin: 8px 8px 0; }
+  .ge-bar { height: 16px; border: 1px solid var(--line2); border-radius: 3px; touch-action: none; }
+  .ge-marks { position: relative; height: 22px; }
+  .ge-mk { position: absolute; top: 3px; width: 14px; height: 14px; margin-left: -7px; border: 2px solid #fff; outline: 1px solid #777; border-radius: 2px; touch-action: none; }
+  .ge-mk::before { content: ""; position: absolute; left: 50%; top: -6px; margin-left: -3px; border: 3px solid transparent; border-bottom-color: #777; }
+  .ge-mk.sel { outline: 2px solid var(--hi); }
+  .ge-row { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
+  .ge-row input[type="color"] { flex: 1; }
+  .ge label { margin-top: 5px; }
+
+  .item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 12px; }
+  .item:first-child { border-top: none; }
+  .item .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .btns { display: flex; gap: 4px; }
+  .empty { color: var(--muted); font-size: 11px; }
   /* badge, credit card size, landscape default */
   .badge {
     width: 3.375in; height: 2.125in; background: var(--badge-bg, #ffffff); color: #111; position: relative; overflow: hidden;
@@ -75,22 +134,6 @@
   .badge.portrait .meta { left: 0.1in; right: 0.1in; bottom: 0.15in; text-align: center; }
   .badge.portrait.back .btxt { top: 0.45in; }
 
-  .ge-modes { display: flex; gap: 6px; }
-  .ge-modes button { margin: 0; flex: 1; padding: 8px; font-size: 14px; background: #fff; color: var(--accent); }
-  .ge-modes button.on { background: var(--accent); color: #fff; }
-  .ge-barwrap { position: relative; margin: 12px 14px 0; }
-  .ge-bar { height: 28px; border: 1px solid var(--line); border-radius: 6px; touch-action: none; }
-  .ge-marks { position: relative; height: 36px; }
-  .ge-mk { position: absolute; top: 5px; width: 24px; height: 24px; margin-left: -12px; border: 2px solid #fff; outline: 1px solid #555; border-radius: 4px; touch-action: none; }
-  .ge-mk.sel { outline: 3px solid var(--accent); }
-  .ge-row { display: flex; gap: 10px; align-items: center; margin-top: 6px; }
-  .ge-row input[type="color"] { flex: 1; }
-  .item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 15px; }
-  .item:first-child { border-top: none; }
-  .item .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .item .btns { display: flex; gap: 6px; }
-  .empty { color: var(--muted); font-size: 14px; }
-
   #printarea { display: none; }
 
   @media print {
@@ -104,132 +147,167 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Badge Tool</h1>
-
-  <div class="tabs">
-    <button id="modeL" class="on">Landscape</button>
-    <button id="modeP">Portrait</button>
-  </div>
-
-  <div class="preview-label">Templates</div>
-  <div class="chips" id="chips"></div>
-
-  <div class="panel">
-    <div class="preview-label">Front</div>
-    <div class="stage"><div class="badge" id="front"></div></div>
-    <div id="backWrap" style="display:none">
-      <div class="preview-label">Back</div>
-      <div class="stage"><div class="badge back" id="back"></div></div>
+  <div class="top">
+    <div class="bar">
+      <div class="brand">Badge <i>/</i> Tool</div>
+      <div class="seg"><button id="modeL" class="on">Land</button><button id="modeP">Port</button></div>
+      <div class="seg"><button id="faceF" class="on">Front</button><button id="faceB" disabled>Back</button></div>
+      <button class="btn-print" id="printBtn">Print</button>
+    </div>
+    <div class="stage" id="stage">
+      <div class="fit" id="frontWrap"><div class="badge" id="front"></div></div>
+      <div class="fit" id="backWrap" style="display:none"><div class="badge back" id="back"></div></div>
+    </div>
+    <div class="stagebar"><div class="chips" id="chips"></div></div>
+    <div class="nav" id="nav">
+      <button data-s="sPerson" class="on">Person</button>
+      <button data-s="sDesign">Design</button>
+      <button data-s="sSeal">Seal</button>
+      <button data-s="sText">Overlay</button>
+      <button data-s="sSaved">Saved</button>
     </div>
   </div>
 
-  <div class="panel">
-    <div class="preview-label">Person</div>
-    <label for="photoIn">Photo</label>
-    <input type="file" id="photoIn" accept="image/*">
-    <label for="zoom">Zoom</label>
-    <input type="range" id="zoom" min="100" max="300" value="100">
-    <div class="row">
-      <div>
-        <label for="panx">Move left or right</label>
-        <input type="range" id="panx" min="-50" max="50" value="0">
+  <div class="sec on" id="sPerson">
+    <div class="grp">
+      <div class="gt">Identity</div>
+      <label for="name">Name</label>
+      <input type="text" id="name" value="xxxx xxxxxxxx" autocomplete="off">
+      <label for="idnum">ID number</label>
+      <input type="text" id="idnum" value="xxxxxx" autocomplete="off">
+    </div>
+    <div class="grp">
+      <div class="gt">Photo</div>
+      <input type="file" id="photoIn" accept="image/*">
+      <div class="lab"><label for="zoom">Zoom</label><output data-for="zoom"></output></div>
+      <input type="range" id="zoom" min="100" max="300" value="100">
+      <div class="row">
+        <div>
+          <div class="lab"><label for="panx">Horizontal</label><output data-for="panx"></output></div>
+          <input type="range" id="panx" min="-50" max="50" value="0">
+        </div>
+        <div>
+          <div class="lab"><label for="pany">Vertical</label><output data-for="pany"></output></div>
+          <input type="range" id="pany" min="-50" max="50" value="0">
+        </div>
       </div>
-      <div>
-        <label for="pany">Move up or down</label>
-        <input type="range" id="pany" min="-50" max="50" value="0">
+      <div class="check"><input type="checkbox" id="bgOn"><span>Remove backdrop</span></div>
+      <div id="bgFields" style="display:none">
+        <div class="row">
+          <div>
+            <label for="keyColor">Backdrop color</label>
+            <input type="color" id="keyColor" value="#00aa00">
+          </div>
+          <div>
+            <div class="lab"><label for="bgTol">Strength</label><output data-for="bgTol"></output></div>
+            <input type="range" id="bgTol" min="5" max="120" value="45">
+          </div>
+        </div>
       </div>
+      <button class="alt" id="clearPhoto">Remove photo</button>
     </div>
-    <div class="check">
-      <input type="checkbox" id="bgOn">
-      <span>Remove photo background</span>
-    </div>
-    <div id="bgFields" style="display:none">
-      <label for="keyColor">Backdrop color to remove</label>
-      <input type="color" id="keyColor" value="#00aa00">
-      <label for="bgTol">Removal strength</label>
-      <input type="range" id="bgTol" min="5" max="120" value="45">
-    </div>
-    <label for="name">Name</label>
-    <input type="text" id="name" value="xxxx xxxxxxxx" autocomplete="off">
-    <label for="idnum">ID number</label>
-    <input type="text" id="idnum" value="xxxxxx" autocomplete="off">
-
-    <button id="printBtn">Print badge</button>
-    <button class="alt" id="savePerson">Save person under this template</button>
-    <button class="alt" id="clearPhoto">Remove photo</button>
+    <button id="savePerson">Save person to this template</button>
   </div>
 
-  <div class="panel">
-    <div class="preview-label">Template design</div>
-    <label for="org">Organization name on the top band</label>
-    <input type="text" id="org" value="xxxxxxxxxxxxxxxx" autocomplete="off">
-    <label for="role">Job role</label>
-    <input type="text" id="role" value="xxxxxxxxxx" autocomplete="off">
-    <div class="row">
-      <div>
-        <label for="issued">Issued</label>
-        <input type="text" id="issued" value="xxxx-xx-xx" autocomplete="off">
-      </div>
-      <div>
-        <label for="expires">Expires</label>
-        <input type="text" id="expires" value="xxxx-xx-xx" autocomplete="off">
+  <div class="sec" id="sDesign">
+    <div class="grp">
+      <div class="gt">Text</div>
+      <label for="org">Band title</label>
+      <input type="text" id="org" value="xxxxxxxxxxxxxxxx" autocomplete="off">
+      <label for="role">Job role</label>
+      <input type="text" id="role" value="xxxxxxxxxx" autocomplete="off">
+      <div class="row">
+        <div>
+          <label for="issued">Issued</label>
+          <input type="text" id="issued" value="xxxx-xx-xx" autocomplete="off">
+        </div>
+        <div>
+          <label for="expires">Expires</label>
+          <input type="text" id="expires" value="xxxx-xx-xx" autocomplete="off">
+        </div>
       </div>
     </div>
-    <label>Band color or gradient</label>
-    <div id="geBand"></div>
-    <label>Badge background color or gradient</label>
-    <div id="geBg"></div>
-    <div class="check">
-      <input type="checkbox" id="useBack">
-      <span>Include a back side</span>
+    <div class="grp">
+      <div class="gt">Band fill</div>
+      <div id="geBand"></div>
     </div>
-    <div id="backFields" style="display:none">
-      <label for="backText">Back side text</label>
-      <textarea id="backText">xxxxxxxxxxxxxxxxxxxx
+    <div class="grp">
+      <div class="gt">Card fill</div>
+      <div id="geBg"></div>
+    </div>
+    <div class="grp">
+      <div class="gt">Reverse side</div>
+      <div class="check"><input type="checkbox" id="useBack"><span>Print a back side</span></div>
+      <div id="backFields" style="display:none">
+        <label for="backText">Back text</label>
+        <textarea id="backText">xxxxxxxxxxxxxxxxxxxx
 xxxxxxxxxxxxxxxxxxxx</textarea>
-    </div>
-
-    <label for="wmIn">Watermark image (seal)</label>
-    <input type="file" id="wmIn" accept="image/*">
-    <label for="wmMode">Watermark placement</label>
-    <select id="wmMode">
-      <option value="off">Off</option>
-      <option value="behind">Behind the person (needs background removal)</option>
-      <option value="over">Over the photo</option>
-    </select>
-    <div class="row">
-      <div>
-        <label for="wmOpacity">Watermark strength</label>
-        <input type="range" id="wmOpacity" min="5" max="100" value="40">
-      </div>
-      <div>
-        <label for="wmSize">Watermark size</label>
-        <input type="range" id="wmSize" min="40" max="160" value="100">
       </div>
     </div>
-    <button class="alt" id="wmClear">Remove watermark image</button>
-
-    <label for="ovText">Text printed over the photo</label>
-    <input type="text" id="ovText" value="" placeholder="xxxxxxxx" autocomplete="off">
-    <label>Text color or gradient</label>
-    <div id="geOv"></div>
-    <label for="ovOpacity">Text strength</label>
-    <input type="range" id="ovOpacity" min="5" max="100" value="35">
-    <label for="ovAngle">Text angle</label>
-    <input type="range" id="ovAngle" min="-180" max="180" value="-24">
-    <label for="ovSize">Text size</label>
-    <input type="range" id="ovSize" min="6" max="40" value="16">
-
-    <label for="tname">Template name</label>
-    <input type="text" id="tname" value="" autocomplete="off">
-    <button id="tNew">Save as new template</button>
-    <button class="alt" id="tUpdate" style="display:none">Update this template</button>
-    <button class="alt" id="tDelete" style="display:none">Delete this template</button>
   </div>
 
-  <div class="panel">
-    <div class="preview-label" id="rosterTitle">People saved under this template</div>
-    <div id="roster"></div>
+  <div class="sec" id="sSeal">
+    <div class="grp">
+      <div class="gt">Seal image</div>
+      <input type="file" id="wmIn" accept="image/*">
+      <label for="wmMode">Placement</label>
+      <select id="wmMode">
+        <option value="off">Off</option>
+        <option value="behind">Behind person (use Remove backdrop)</option>
+        <option value="over">Over photo</option>
+      </select>
+      <div class="row">
+        <div>
+          <div class="lab"><label for="wmOpacity">Strength</label><output data-for="wmOpacity"></output></div>
+          <input type="range" id="wmOpacity" min="5" max="100" value="40">
+        </div>
+        <div>
+          <div class="lab"><label for="wmSize">Size</label><output data-for="wmSize"></output></div>
+          <input type="range" id="wmSize" min="40" max="160" value="100">
+        </div>
+      </div>
+      <button class="alt" id="wmClear">Remove seal</button>
+    </div>
+  </div>
+
+  <div class="sec" id="sText">
+    <div class="grp">
+      <div class="gt">Overlay text</div>
+      <input type="text" id="ovText" value="" placeholder="xxxxxxxx" autocomplete="off">
+      <div class="row">
+        <div>
+          <div class="lab"><label for="ovAngle">Angle</label><output data-for="ovAngle"></output></div>
+          <input type="range" id="ovAngle" min="-180" max="180" value="-24">
+        </div>
+        <div>
+          <div class="lab"><label for="ovSize">Size</label><output data-for="ovSize"></output></div>
+          <input type="range" id="ovSize" min="6" max="40" value="16">
+        </div>
+      </div>
+      <div class="lab"><label for="ovOpacity">Strength</label><output data-for="ovOpacity"></output></div>
+      <input type="range" id="ovOpacity" min="5" max="100" value="35">
+    </div>
+    <div class="grp">
+      <div class="gt">Overlay fill</div>
+      <div id="geOv"></div>
+    </div>
+  </div>
+
+  <div class="sec" id="sSaved">
+    <div class="grp">
+      <div class="gt">Template</div>
+      <label for="tname">Template name</label>
+      <input type="text" id="tname" value="" autocomplete="off">
+      <button id="tNew">Save as new template</button>
+      <div class="btnrow">
+        <button class="alt" id="tUpdate" style="display:none">Update</button>
+        <button class="alt" id="tDelete" style="display:none">Delete</button>
+      </div>
+    </div>
+    <div class="grp">
+      <div class="gt" id="rosterTitle">People</div>
+      <div id="roster"></div>
+    </div>
   </div>
 </div>
 
@@ -471,6 +549,7 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
     $('backWrap').style.display = v.useBack ? 'block' : 'none';
     $('backFields').style.display = v.useBack ? 'block' : 'none';
     $('bgFields').style.display = $('bgOn').checked ? 'block' : 'none';
+    if (window.fitStage) window.fitStage(v.useBack);
     $('modeL').className = v.orientation === 'landscape' ? 'on' : '';
     $('modeP').className = v.orientation === 'portrait' ? 'on' : '';
     $('pageStyle').textContent = v.orientation === 'portrait'
@@ -772,6 +851,59 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
   /* start on the last template used */
   var start = db.active ? findT(db.active) : null;
   applyTemplate(start);
+})();
+</script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var face = 'front';
+
+  function outputs() {
+    var os = document.querySelectorAll('output[data-for]');
+    for (var i = 0; i < os.length; i++) {
+      var el = $(os[i].getAttribute('data-for'));
+      if (el) os[i].textContent = el.value;
+    }
+  }
+
+  function fitOne(wrap) {
+    var b = wrap.firstElementChild;
+    var w = b.offsetWidth, h = b.offsetHeight;
+    if (!w || !h) return;
+    var availW = $('stage').clientWidth - 24;
+    var maxH = Math.max(120, Math.min(190, window.innerHeight * 0.24));
+    var k = Math.min(1, availW / w, maxH / h);
+    wrap.style.width = Math.floor(w * k) + 'px';
+    wrap.style.height = Math.floor(h * k) + 'px';
+    b.style.transform = 'scale(' + k + ')';
+  }
+
+  window.fitStage = function (useBack) {
+    if (!useBack) face = 'front';
+    $('faceB').disabled = !useBack;
+    $('faceF').className = face === 'front' ? 'on' : '';
+    $('faceB').className = face === 'back' ? 'on' : '';
+    $('frontWrap').style.display = face === 'front' ? '' : 'none';
+    $('backWrap').style.display = face === 'back' ? '' : 'none';
+    fitOne(face === 'front' ? $('frontWrap') : $('backWrap'));
+    outputs();
+  };
+
+  $('faceF').addEventListener('click', function () { face = 'front'; window.fitStage($('useBack').checked); });
+  $('faceB').addEventListener('click', function () { if (!$('useBack').checked) return; face = 'back'; window.fitStage(true); });
+
+  $('nav').addEventListener('click', function (e) {
+    var id = e.target.getAttribute('data-s');
+    if (!id) return;
+    var bs = $('nav').children;
+    for (var i = 0; i < bs.length; i++) bs[i].className = bs[i] === e.target ? 'on' : '';
+    var ss = document.querySelectorAll('.sec');
+    for (var j = 0; j < ss.length; j++) ss[j].className = 'sec' + (ss[j].id === id ? ' on' : '');
+  });
+
+  document.addEventListener('input', outputs);
+  window.addEventListener('resize', function () { window.fitStage($('useBack').checked); });
+  window.fitStage($('useBack').checked);
 })();
 </script>
 </body>

@@ -128,7 +128,9 @@
   .badge .el.band { display: flex; align-items: center; padding: 0 0.12in; overflow: hidden; background: var(--band-fill, #1f4e9c); }
   .badge .el.band span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
   .badge .el.stripe { background: var(--band-fill, #1f4e9c); }
-  .badge .el.txt { overflow-wrap: break-word; word-wrap: break-word; }
+  .badge .el.txt { overflow-wrap: break-word; word-wrap: break-word; overflow: hidden; }
+  .badge .el.txt.one { white-space: nowrap; overflow-wrap: normal; word-wrap: normal; }
+  .badge .el.band.fit span { text-overflow: clip; max-width: none; overflow: visible; }
   .badge .el.photo { overflow: hidden; background: #e8ebf0; }
   .badge .el.photo.clean { background: transparent; }
   .badge .el.photo img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; transform-origin: center center; }
@@ -403,6 +405,7 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
           <div class="check" style="margin-top:22px"><input type="checkbox" id="elUpper"><span>All caps</span></div>
         </div>
       </div>
+      <div class="check"><input type="checkbox" id="elFit"><span>Shrink to fit, one line. Size is the largest it gets.</span></div>
     </div>
   </div>
 
@@ -967,7 +970,7 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
       var b = boxCss(e);
       if (k === 'band') {
         var jc = e.align === 'center' ? 'center' : (e.align === 'right' ? 'flex-end' : 'flex-start');
-        out += '<div class="el band" data-el="band" style="' + b + 'justify-content:' + jc + ';' + textCss(e, v) + '"><span>' + esc(v.org) + '</span></div>';
+        out += '<div class="el band' + (e.fit !== false ? ' fit' : '') + '" data-el="band" data-max="' + e.size + '" style="' + b + 'justify-content:' + jc + ';' + textCss(e, v) + '"><span>' + esc(v.org) + '</span></div>';
       } else if (k === 'stripe') {
         out += '<div class="el stripe" data-el="stripe" style="' + b + '"></div>';
       } else if (k === 'photo') {
@@ -985,7 +988,8 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
           if (v.expires) m.push('Expires ' + esc(v.expires));
           txt = m.join('<br>'); lh = 1.3;
         }
-        out += '<div class="el txt" data-el="' + k + '" style="' + b + 'line-height:' + lh + ';' + textCss(e, v) + '">' + txt + '</div>';
+        var one = e.fit !== false && k !== 'meta';
+        out += '<div class="el txt' + (one ? ' one' : '') + '" data-el="' + k + '" data-max="' + e.size + '" data-fit="' + (e.fit !== false ? 1 : 0) + '" style="' + b + 'line-height:' + lh + ';' + textCss(e, v) + '">' + txt + '</div>';
       }
     });
     if (edit) {
@@ -1020,8 +1024,32 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
       ? '@page { size: 2.125in 3.375in; margin: 0; }'
       : '@page { size: 3.375in 2.125in; margin: 0; }';
     fitStage();
+    fitTexts($('front'));
     if (tilt.on) queueTilt();
   }
+
+  /* shrink text to fit its box */
+  function fitOneText(node) {
+    var k = node.getAttribute('data-el');
+    var e = state.layout[k];
+    if (!e || e.fit === false) return;
+    var max = parseFloat(node.getAttribute('data-max')) || e.size, size = max;
+    node.style.fontSize = size + 'pt';
+    var over = function () { return node.scrollWidth > node.clientWidth + 1 || node.scrollHeight > node.clientHeight + 1; };
+    if (!node.clientWidth || !over()) return;
+    var lo = 3, hi = max;
+    for (var i = 0; i < 12; i++) {
+      var mid = (lo + hi) / 2;
+      node.style.fontSize = mid + 'pt';
+      if (over()) hi = mid; else lo = mid;
+    }
+    node.style.fontSize = (Math.floor(lo * 4) / 4) + 'pt';
+  }
+  function fitTexts(root) {
+    var ns = root.querySelectorAll('.el.band, .el.txt');
+    for (var i = 0; i < ns.length; i++) fitOneText(ns[i]);
+  }
+  if (document.fonts && document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', function () { fitTexts($('front')); });
 
   /* stage fit and front/back */
   var face = 'front';
@@ -1150,7 +1178,7 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
       $('elSample').style.fontFamily = fam(e.font || state.font);
       $('elSample').style.fontWeight = e.weight;
       $('elSize').value = e.size; $('elLs').value = e.ls;
-      $('elColor').value = e.color; $('elUpper').checked = !!e.upper;
+      $('elColor').value = e.color; $('elUpper').checked = !!e.upper; $('elFit').checked = e.fit !== false;
       markSeg('aligns', 'data-a', e.align);
       markSeg('weights', 'data-w', String(e.weight));
     }
@@ -1218,6 +1246,7 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
   $('elLs').addEventListener('input', function () { cur().ls = parseInt($('elLs').value, 10); edited(); });
   $('elColor').addEventListener('input', function () { cur().color = $('elColor').value; edited(); });
   $('elUpper').addEventListener('change', function () { cur().upper = $('elUpper').checked; edited(); });
+  $('elFit').addEventListener('change', function () { cur().fit = $('elFit').checked; edited(); });
   $('aligns').addEventListener('click', function (ev) { var a = ev.target.getAttribute('data-a'); if (!a) return; cur().align = a; edited(); syncLayout(); });
   $('weights').addEventListener('click', function (ev) { var w = ev.target.getAttribute('data-w'); if (!w) return; cur().weight = parseInt(w, 10); edited(); syncLayout(); });
 
@@ -1270,6 +1299,7 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
     if (node) { node.style.left = r3(e.x) + 'in'; node.style.top = r3(e.y) + 'in'; node.style.width = r3(e.w) + 'in'; node.style.height = r3(e.h) + 'in'; }
     var sb = $('front').querySelector('.selbox');
     if (sb) sb.setAttribute('style', css);
+    if (node && (node.classList.contains('txt') || node.classList.contains('band'))) fitOneText(node);
   }
 
   $('front').addEventListener('pointerdown', function (ev) {
@@ -1562,6 +1592,11 @@ xxxxxxxxxxxxxxxxxxxx</textarea>
     var html = '<div class="' + cls(v) + '">' + frontHTML(v, false) + '</div>';
     if (v.useBack) html += '<div class="' + cls(v, 'back') + '">' + backHTML(v) + '</div>';
     $('printarea').innerHTML = html;
+    var src = $('front').querySelectorAll('.el.band, .el.txt');
+    for (var i = 0; i < src.length; i++) {
+      var twin = $('printarea').querySelector('[data-el="' + src[i].getAttribute('data-el') + '"]');
+      if (twin) twin.style.fontSize = src[i].style.fontSize;
+    }
     var go = function () { window.print(); };
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(go); else go();
   });

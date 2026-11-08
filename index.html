@@ -181,7 +181,7 @@
     <div class="bar">
       <div class="brand">Badge <i>/</i> Tool</div>
       <div class="seg"><button id="modeL" class="on">Land</button><button id="modeP">Port</button></div>
-      <div class="seg"><button id="faceF" class="on">Front</button><button id="faceB" disabled>Back</button></div>
+      <div class="seg"><button id="faceF" class="on">Front</button><button id="faceB">Back</button></div>
       <button class="btn-print" id="printBtn">Print</button>
     </div>
     <div class="strip"><span class="sl">Style</span><div class="chips" id="styleChips"></div></div>
@@ -526,7 +526,7 @@
     <div class="grp">
       <div class="gt">Back side</div>
       <div class="check"><input type="checkbox" id="useBack"><span>Print a back side</span></div>
-      <div class="note">Back styles show in the Style row while the back is on screen.</div>
+      <div class="note">The back always shows here. This switch only decides if it prints.</div>
     </div>
     <div class="grp">
       <div class="gt">Part, or tap it on the back</div>
@@ -1609,9 +1609,6 @@
     for (var c = 1; c < wrap.children.length; c++) wrap.children[c].style.borderRadius = rad;
   }
   function fitStage() {
-    var useBack = $('useBack').checked;
-    if (!useBack) face = 'front';
-    $('faceB').disabled = !useBack;
     $('faceF').className = face === 'front' ? 'on' : '';
     $('faceB').className = face === 'back' ? 'on' : '';
     $('frontWrap').style.display = face === 'front' ? '' : 'none';
@@ -1632,7 +1629,7 @@
     drawStyles();
   }
   $('faceF').addEventListener('click', function () { setFace('front'); });
-  $('faceB').addEventListener('click', function () { if (!$('useBack').checked) return; setFace('back'); });
+  $('faceB').addEventListener('click', function () { setFace('back'); showTab('sBack'); });
   window.addEventListener('resize', fitStage);
   document.addEventListener('input', outputs);
 
@@ -1647,7 +1644,7 @@
     var id = e.target.getAttribute('data-s');
     if (!id) return;
     showTab(id);
-    if (id === 'sBack' && $('useBack').checked && face !== 'back') setFace('back');
+    if (id === 'sBack' && face !== 'back') setFace('back');
     if (id === 'sLayout' && face !== 'front') setFace('front');
   });
 
@@ -1979,7 +1976,7 @@
     var k = ev.target.getAttribute('data-el');
     if (!k) return;
     state.bsel = k;
-    if ($('useBack').checked && face !== 'back') setFace('back');
+    if (face !== 'back') setFace('back');
     render(); syncBack();
   });
   $('bShow').addEventListener('change', function () { curB().show = $('bShow').checked; render(); });
@@ -2043,7 +2040,7 @@
     render();
   });
   $('bwClear').addEventListener('click', function () { state.bwImg = ''; $('bwIn').value = ''; render(); });
-  $('useBack').addEventListener('change', function () { setFace($('useBack').checked ? 'back' : 'front'); });
+  $('useBack').addEventListener('change', function () { if ($('useBack').checked) setFace('back'); });
 
   /* saved templates */
   function drawChips() {
